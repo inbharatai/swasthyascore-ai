@@ -6,7 +6,7 @@ export const hi = {
   "app.safety": "यह केवल स्क्रीनिंग है। यह मेडिकल डायग्नोसिस नहीं है।",
   "app.headerSubtitle": "केवल स्क्रीनिंग • निदान नहीं",
   "app.privacy":
-    "जब तक आप AI फीचर नहीं चुनते, आपका डेटा इसी डिवाइस पर रहता है।",
+    "जब तक आप AI विश्लेषण या sharing नहीं चुनते, आपका डेटा इसी डिवाइस पर रहता है।",
   "app.offlineReady": "मैनुअल कैलकुलेशन ऑफलाइन भी काम करता है",
   "app.mobileBadge": "भारत के लिए बना",
   "common.english": "English",
@@ -36,14 +36,14 @@ export const hi = {
   "nav.check": "जांच",
   "nav.results": "रिज़ल्ट",
   "nav.advice": "सलाह",
-  "card.start.title": "रिस्क चेक शुरू करें",
-  "card.start.description": "फॉर्म भरें और साफ स्क्रीनिंग सारांश पाएं।",
+  "card.start.title": "AI जोखिम जांच शुरू करें",
+  "card.start.description": "AI-guided screening flow शुरू करें।",
   "card.upload.title": "लैब रिपोर्ट अपलोड करें",
   "card.upload.description":
     "जब ज़रूरत हो तभी AI OCR से रिपोर्ट में दिख रहे मान पढ़ें।",
-  "card.referral.title": "रेफ़रल नोट बनाएं",
+  "card.referral.title": "रिपोर्ट शेयर करें",
   "card.referral.description":
-    "स्क्रीनिंग रिज़ल्ट से डॉक्टर के लिए आसान नोट तैयार करें।",
+    "Download, copy, WhatsApp, email या phone share sheet से रिपोर्ट भेजें।",
   "card.followup.title": "आगे की सलाह",
   "card.followup.description":
     "शांत, आसान भाषा में अगले कदम देखें।",
@@ -98,7 +98,7 @@ export const hi = {
   "form.calculate": "स्क्रीनिंग रिज़ल्ट निकालें",
   "form.reset": "फॉर्म साफ करें",
   "form.aiConsent":
-    "AI फीचर तभी डेटा भेजते हैं जब आप OCR या AI explanation चुनते हैं।",
+    "AI विश्लेषण तभी डेटा भेजता है जब आप OCR या AI explanation चुनते हैं।",
   "form.units.cm": "सेमी",
   "form.units.kg": "किलो",
   "form.units.ftIn": "फीट/इंच",
@@ -243,6 +243,20 @@ export const hi = {
     "ज्यादा नियमित चलना-फिरना रखें और लंबे समय तक बैठने से बचें।",
   "report.title": "SwasthyaScore AI स्क्रीनिंग रिपोर्ट",
   "report.download": "प्लेन-टेक्स्ट रिपोर्ट डाउनलोड करें",
+  "report.shareTitle": "Smart screening report शेयर करें",
+  "report.shareDescription":
+    "रिपोर्ट download, copy करें या WhatsApp/email में पहले से भरी हुई खोलें। भेजना आपके हाथ में है।",
+  "report.shareWhatsApp": "WhatsApp पर भेजें",
+  "report.shareEmail": "Email से भेजें",
+  "report.shareNative": "Phone से शेयर करें",
+  "report.copy": "रिपोर्ट कॉपी करें",
+  "report.copySuccess": "रिपोर्ट कॉपी हो गई।",
+  "report.copyFailure": "इस डिवाइस पर copy उपलब्ध नहीं है।",
+  "report.nativeUnavailable":
+    "Phone share sheet उपलब्ध नहीं है। आप copy, WhatsApp या email उपयोग कर सकते हैं।",
+  "report.emailSubject": "SwasthyaScore AI स्क्रीनिंग रिपोर्ट",
+  "report.shareSafety":
+    "Sharing केवल आपके phone apps खोलती है। जब तक आप send नहीं करते, कुछ नहीं भेजा जाता।",
   "report.generated": "बनने का समय",
   "report.disclaimer":
     "यह केवल स्क्रीनिंग रिपोर्ट है। यह बीमारी का निदान नहीं करती और डॉक्टर की जगह नहीं लेती।",
@@ -278,7 +292,7 @@ export const hi = {
     "फिलहाल केवल calculator result उपयोग हो रहा है। आप next steps और referral note फिर भी शेयर कर सकते हैं।",
   "ai.referralButton": "AI से referral note फिर बनाएं",
   "ai.notConfigured":
-    "AI फीचर वैकल्पिक हैं और इस environment में अभी configure नहीं हैं।",
+    "इस environment में AI analysis अभी configure नहीं है।",
   "ai.summaryTitle": "सरल सारांश",
   "ai.topFactors": "मुख्य जोखिम कारण",
   "ai.nextSteps": "सुझाए गए अगले कदम",
@@ -297,7 +311,7 @@ export const hi = {
   "disclaimer.bmiScreening":
     "BMI एक स्क्रीनिंग माप है, यह सीधे शरीर की चर्बी नहीं बताता।",
   "disclaimer.privacy":
-    "लैब इमेज डिफ़ॉल्ट रूप से स्टोर नहीं की जाती। AI फीचर तभी चलते हैं जब आप चुनते हैं।",
+    "लैब इमेज डिफ़ॉल्ट रूप से स्टोर नहीं की जाती। AI analysis तभी चलता है जब आप चुनते हैं।",
   "disclaimer.manualVerify":
     "OCR से निकले मानों को उपयोग से पहले हमेशा खुद जांचें।",
   "disclaimer.offlineAi":
@@ -314,7 +328,7 @@ export const hi = {
   "upload.confidence": "भरोसा",
   "upload.preview": "निकली हुई झलक",
   "status.offlineReady": "ऑफलाइन-रेडी शेल चालू है",
-  "status.onlineRequired": "AI फीचर के लिए इंटरनेट चाहिए",
+  "status.onlineRequired": "AI analysis के लिए इंटरनेट चाहिए",
   "status.installTitle": "SwasthyaScore AI इंस्टॉल करें",
   "status.installDescription":
     "फोन में ऐप जोड़ें ताकि जल्दी खुल सके और मैनुअल स्क्रीनिंग ऑफलाइन भी चले।",
@@ -339,7 +353,7 @@ export const hi = {
   "result.reasonsTitle": "यह रिज़ल्ट क्यों आया",
   "result.nextStepsTitle": "अब क्या करें",
   "result.referralTitle": "रेफ़रल नोट",
-  "result.optionalAi": "AI फीचर वैकल्पिक enhancement हैं।",
+  "result.optionalAi": "हर screening के बाद AI-guided explanation और sharing तैयार है।",
   "result.labTestingRecommended": "लैब टेस्ट की सलाह",
   "result.doctorReferralNeeded": "डॉक्टर रेफ़रल की सलाह",
   "result.emergencyWarning": "इमरजेंसी चेतावनी",
@@ -358,8 +372,8 @@ export const hi = {
   "card.hindi.description": "ऐप को सरल हिंदी में बदलें।",
   "home.hero.title": "60 सेकंड में मोटापा, डायबिटीज़ और BP जोखिम जांचें",
   "home.hero.description":
-    "फील्ड वर्कर, क्लिनिक, NGO और परिवारों के लिए आसान स्क्रीनिंग। मैनुअल गणना ऑफलाइन चलती है; AI फीचर वैकल्पिक हैं।",
-  "home.hero.cta": "रिस्क चेक शुरू करें",
+    "आपका व्यक्तिगत AI NCD जोखिम स्क्रीनर — AI-guided insights, smart reports और आसान sharing के साथ मोटापा, डायबिटीज़ और BP जोखिम स्क्रीन करें।",
+  "home.hero.cta": "AI जोखिम जांच शुरू करें",
   "home.kpi.fast": "मोबाइल पर तेज स्क्रीनिंग के लिए",
   "home.kpi.safe": "केवल स्क्रीनिंग, निदान नहीं",
   "home.kpi.offline": "मैनुअल कैलकुलेटर ऑफलाइन चलता है",
@@ -414,7 +428,7 @@ export const hi = {
   "wizard.openLab": "लैब OCR खोलें",
   "report.tabTitle": "रिपोर्ट",
   "report.tabSubtitle":
-    "प्लेन-टेक्स्ट रिपोर्ट डाउनलोड करें या रेफरल नोट शेयर करें।",
+    "Screening report को download, copy, WhatsApp, email या phone share sheet से शेयर करें।",
   "report.noResultDescription":
     "रिपोर्ट और रेफरल नोट बनाने के लिए पहले रिस्क चेक पूरा करें।",
   "report.startRisk": "रिस्क चेक शुरू करें",
@@ -508,7 +522,7 @@ export const hi = {
     "अंतिम कमर जोखिम के लिए रिस्क चेक में मापी हुई कमर वैल्यू भरें।",
   "camera.visible.title": "विजिबल रिस्क फ्लैग असिस्ट",
   "camera.visible.description":
-    "वैकल्पिक AI घाव या सूजन जैसी दिखने वाली चिंता को सरल भाषा में समझा सकता है। यह निदान नहीं करता।",
+    "Consent के बाद AI घाव या सूजन जैसी दिखने वाली चिंता को सरल भाषा में समझा सकता है। यह निदान नहीं करता।",
   "camera.uploadVisible": "दिखने वाली चिंता की इमेज चुनें",
   "camera.visibleConsent":
     "मैं इस चुनी हुई इमेज को AI विश्लेषण के लिए भेजने से सहमत हूं। इमेज डिफॉल्ट रूप से स्टोर नहीं होती।",

@@ -4,7 +4,7 @@ export const en = {
   "app.safety": "Screening only. Not a medical diagnosis.",
   "app.headerSubtitle": "Screening only • Not a diagnosis",
   "app.privacy":
-    "Your data stays on this device unless you choose an AI feature.",
+    "Your data stays on this device unless you choose AI analysis or sharing.",
   "app.offlineReady": "Works offline for manual calculations",
   "app.mobileBadge": "Made for Bharat",
   "common.english": "English",
@@ -62,17 +62,18 @@ export const en = {
   "nav.camera": "Camera",
   "nav.lab": "Lab",
   "nav.report": "Report",
-  "card.start.title": "Start Risk Check",
-  "card.start.description": "Fill the form and get a clear screening summary.",
+  "card.start.title": "Start AI Risk Check",
+  "card.start.description":
+    "Start the guided AI-powered screening flow.",
   "card.camera.title": "Camera Health Assist",
   "card.camera.description":
     "Use safe camera guidance for height, waist, and visible concern support.",
   "card.upload.title": "Upload Lab Report",
   "card.upload.description":
     "Use AI OCR only when you want help reading visible lab values.",
-  "card.referral.title": "Generate Referral Note",
+  "card.referral.title": "Share Report",
   "card.referral.description":
-    "Create a simple doctor-ready note from the screening result.",
+    "Download, copy, WhatsApp, email, or use your phone share sheet.",
   "card.followup.title": "Follow-up Advice",
   "card.followup.description":
     "See practical next steps in calm, patient-friendly language.",
@@ -80,8 +81,8 @@ export const en = {
   "card.hindi.description": "Switch the app into simple Hindi.",
   "home.hero.title": "Check obesity, diabetes & BP risk in 60 seconds",
   "home.hero.description":
-    "A guided screening flow for field workers, clinics, NGOs, and families. Manual calculations work offline; AI features are optional.",
-  "home.hero.cta": "Start Risk Check",
+    "Your personal AI NCD detector — screen obesity, diabetes and blood pressure risk with AI-guided insights, smart reports, and easy sharing.",
+  "home.hero.cta": "Start AI Risk Check",
   "home.kpi.fast": "Made for fast mobile screening",
   "home.kpi.safe": "Screening only, never diagnosis",
   "home.kpi.offline": "Manual calculator works offline",
@@ -184,7 +185,7 @@ export const en = {
   "form.calculate": "Calculate screening result",
   "form.reset": "Clear form",
   "form.aiConsent":
-    "AI features send only the data needed for OCR or explanation after you choose them.",
+    "AI analysis sends only the data needed for OCR or explanation after you choose it.",
   "form.units.cm": "cm",
   "form.units.kg": "kg",
   "form.units.ftIn": "ft/in",
@@ -325,6 +326,20 @@ export const en = {
     "Aim for more regular movement and less sedentary time.",
   "report.title": "SwasthyaScore AI screening report",
   "report.download": "Download plain-text report",
+  "report.shareTitle": "Share smart screening report",
+  "report.shareDescription":
+    "Download, copy, or open WhatsApp/email with the report pre-filled. You choose when to send.",
+  "report.shareWhatsApp": "Share on WhatsApp",
+  "report.shareEmail": "Share by Email",
+  "report.shareNative": "Share from Phone",
+  "report.copy": "Copy Report",
+  "report.copySuccess": "Report copied.",
+  "report.copyFailure": "Copy is unavailable on this device.",
+  "report.nativeUnavailable":
+    "Phone share sheet is unavailable. You can copy or use WhatsApp/email.",
+  "report.emailSubject": "SwasthyaScore AI screening report",
+  "report.shareSafety":
+    "Sharing opens your phone apps only. Nothing is sent until you choose send.",
   "report.generated": "Generated on",
   "report.disclaimer":
     "This is a screening report only. It does not diagnose disease or replace a doctor.",
@@ -334,7 +349,8 @@ export const en = {
   "report.referral": "Referral note",
   "report.aiSection": "AI explanation",
   "report.tabTitle": "Report",
-  "report.tabSubtitle": "Download a plain-text screening report or share the referral note.",
+  "report.tabSubtitle":
+    "Download, copy, WhatsApp, email, or open your phone share sheet with the screening report.",
   "report.noResultDescription":
     "Complete the risk check first to generate a report and referral note.",
   "report.startRisk": "Start risk check",
@@ -375,7 +391,7 @@ export const en = {
     "Using the calculator result only. You can still share the referral note and next steps.",
   "ai.referralButton": "Refresh referral note with AI",
   "ai.notConfigured":
-    "AI features are optional and currently not configured in this environment.",
+    "AI analysis is not configured in this environment.",
   "ai.summaryTitle": "Simple summary",
   "ai.topFactors": "Top risk factors",
   "ai.nextSteps": "Recommended next steps",
@@ -394,7 +410,7 @@ export const en = {
   "disclaimer.bmiScreening":
     "BMI is a screening measure and does not directly measure body fat.",
   "disclaimer.privacy":
-    "Lab images are not stored by default. AI features run only when you choose them.",
+    "Lab images are not stored by default. AI analysis runs only when you choose it.",
   "disclaimer.manualVerify":
     "Always verify OCR-extracted values manually before using them.",
   "disclaimer.offlineAi":
@@ -411,7 +427,7 @@ export const en = {
   "upload.confidence": "Confidence",
   "upload.preview": "Extracted preview",
   "status.offlineReady": "Offline-ready shell active",
-  "status.onlineRequired": "Internet required for AI features",
+  "status.onlineRequired": "Internet required for AI analysis",
   "status.installTitle": "Install SwasthyaScore AI",
   "status.installDescription":
     "Add this app to your phone for faster access and offline manual screening.",
@@ -499,7 +515,7 @@ export const en = {
     "Enter the measured waist value in Risk Check for the final waist-risk category.",
   "camera.visible.title": "Visible Risk Flag Assist",
   "camera.visible.description":
-    "Optional AI can explain broad visible concerns such as wounds or swelling. It cannot diagnose.",
+    "AI can explain broad visible concerns such as wounds or swelling after consent. It cannot diagnose.",
   "camera.uploadVisible": "Choose visible-concern image",
   "camera.visibleConsent":
     "I agree to send this selected image for AI analysis. Images are not stored by default.",
@@ -532,7 +548,7 @@ export const en = {
   "result.reasonsTitle": "Why this result",
   "result.nextStepsTitle": "What to do next",
   "result.referralTitle": "Referral note",
-  "result.optionalAi": "AI features are optional enhancements.",
+  "result.optionalAi": "AI-guided explanation and sharing are ready after every screening.",
   "result.labTestingRecommended": "Lab testing recommended",
   "result.doctorReferralNeeded": "Doctor referral advised",
   "result.emergencyWarning": "Emergency warning",

@@ -7,11 +7,11 @@ import type {
 } from "@/lib/types/health";
 import { formatDecimal } from "@/lib/utils/formatting";
 import { buildDeterministicReferralNote } from "@/lib/utils/report";
-import { DownloadReportButton } from "./DownloadReportButton";
 import { MeasurementCard } from "./MeasurementCard";
 import { RecommendationCard } from "./RecommendationCard";
 import { ReferralNoteCard } from "./ReferralNoteCard";
 import { RiskGauge } from "./RiskGauge";
+import { ShareReportButtons } from "./ShareReportButtons";
 
 interface ResultScreenProps {
   language: Language;
@@ -247,14 +247,14 @@ export function ResultScreen({
         />
         <section className="rounded-[30px] border border-white/70 bg-white/95 p-5 shadow-sm">
           <h3 className="text-xl font-semibold text-[var(--slate-950)]">
-            {translate(language, "report.title")}
+            {translate(language, "report.shareTitle")}
           </h3>
           <p className="mt-2 text-sm leading-6 text-[var(--slate-600)]">
-            {translate(language, "result.optionalAi")}
+            {translate(language, "report.shareDescription")}
           </p>
           <div className="mt-5">
             {reportContent ? (
-              <DownloadReportButton language={language} content={reportContent} />
+              <ShareReportButtons language={language} content={reportContent} />
             ) : null}
           </div>
         </section>

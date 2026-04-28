@@ -1,58 +1,70 @@
 # SwasthyaScore AI
 
-SwasthyaScore AI is a mobile-first bilingual PWA for quick NCD screening in Bharat. It helps laypersons, NGOs, field workers, clinics, and community health workers screen obesity risk, diabetes risk, waist risk, and blood pressure risk in under a minute.
+SwasthyaScore AI is a mobile-first bilingual PWA for AI-guided NCD risk screening in Bharat.
 
-This version is intentionally structured so manual screening works without a database and without OpenAI. It includes a local-device authentication gate for role-based access context, while patient and screening data remains local-first. AI is optional and only used when the user explicitly asks for lab OCR, visible-concern explanation, referral-note support, or patient-friendly explanation.
+Tagline: Your personal AI NCD detector.
 
-## Medical disclaimer
+It helps families, field workers, NGOs, clinics, and community healthcare teams screen obesity risk, diabetes risk, waist risk, blood pressure flags, and basic visible health concerns in a fast mobile flow. The main dashboard is the product home screen; there is no separate marketing landing page.
 
-- This is a screening and risk-awareness tool only.
+## Medical Disclaimer
+
+- This app is for screening and risk awareness only.
 - It does not diagnose diabetes, hypertension, obesity, or any other disease.
-- It does not prescribe medicines or dosages.
-- Abnormal results need confirmation by a qualified doctor or diagnostic lab.
-- Blood pressure diagnosis needs repeated properly measured readings.
+- It does not prescribe medicines, dosages, or treatment changes.
+- Abnormal values need confirmation by a qualified doctor or diagnostic lab.
+- Very high BP, severe symptoms, or very high sugar values may require urgent medical care.
+- Blood pressure diagnosis requires repeated properly measured readings.
 
-## Features
+## What It Does
 
-- Mobile-first Next.js App Router PWA with install prompt, manifest, icons, and offline shell
-- Direct-to-dashboard experience with no separate marketing landing page
-- Local-device authentication gate with role selection for patient, field worker, clinic admin, or doctor context
-- English and Hindi local translations
-- Deterministic calculators for BMI, Indian/Asian obesity risk, waist risk, IDRS-style diabetes risk, BP flags, lab interpretation, and overall triage
-- Optional AI lab OCR using the OpenAI Responses API
-- Camera Health Assist using the browser camera API and MediaPipe Pose Landmarker for safe height/body guidance
-- Optional AI visible-concern explanation from selected images, with explicit consent and non-diagnostic output
-- Optional AI explanation, simplification, and referral-note drafting using the OpenAI Responses API
-- Voice-assisted note entry through the browser Web Speech API when supported
-- Plain-text downloadable screening report
-- Future-ready auth/database placeholders and Supabase schema stub
+- AI-first mobile dashboard with English/Hindi support.
+- Guided Risk Check wizard for basic details, measurements, risk factors, BP/labs, and results.
+- Deterministic calculators for BMI, Indian/Asian BMI category, waist risk, IDRS-style diabetes risk, BP flags, lab interpretation, and overall risk.
+- Height input supports centimeters and feet/inches, then normalizes to centimeters.
+- Weight input supports kilograms and pounds, then normalizes to kilograms.
+- Camera Health Assist supports safe camera permission handling, capture, upload fallback, height guidance, body-risk guidance, waist guidance, and visible-concern support.
+- OpenAI-powered lab OCR, visible-concern explanation, patient-friendly explanation, and referral-note support through server-side routes only.
+- Report download, WhatsApp sharing, email sharing, native phone share sheet, and copy-to-clipboard without backend messaging APIs.
+- Installable PWA with manifest, icons, service worker, offline shell, and mobile safe-area spacing.
+- Future-ready placeholders for authentication, patient records, lab reports, referral notes, audit logs, and Supabase schema.
 
-## Tech stack
+## Privacy And Data
 
-- Next.js 16
+- No cloud database is required in the current release.
+- Authentication is not active yet.
+- Form drafts are stored in browser `localStorage` for convenience.
+- Uploaded images are not stored by default by the app.
+- Images are sent to OpenAI only after the user explicitly chooses AI OCR or AI visible-concern analysis.
+- Report sharing opens WhatsApp, email, or the phone share sheet with prefilled text. The user manually sends it.
+- Never commit `.env.local` or any API key.
+
+## Tech Stack
+
+- Next.js 16 App Router
 - React 19
 - TypeScript
 - Tailwind CSS 4
-- OpenAI Node SDK
+- OpenAI Node SDK and Responses API routes
 - MediaPipe `@mediapipe/tasks-vision`
 - Zod
 - Vitest
+- Remotion for product media
 
 ## Setup
 
-1. Install dependencies:
+Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-2. Copy the environment template:
+Create the local environment file:
 
 ```bash
 cp .env.example .env.local
 ```
 
-3. Add your OpenAI configuration if you want AI features:
+Add OpenAI configuration:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key
@@ -62,121 +74,148 @@ OPENAI_MODEL_PREMIUM=gpt-5.5
 OPENAI_MODEL_FALLBACK=gpt-4.1
 ```
 
-4. Start the app:
+Run locally:
 
 ```bash
 pnpm dev
 ```
 
-5. Open:
+Open:
 
 ```text
 http://localhost:3000
 ```
 
-## Authentication and storage in v1
-
-- Authentication is local-device only in this version.
-- The local session stores display name, role, selected language, and timestamps in browser `localStorage`.
-- Screening form drafts are also stored in browser `localStorage`.
-- No Supabase database is required for v1.
-- Clearing browser data signs the user out and removes local drafts.
-- For production clinic workflows, replace the local auth service with Supabase Auth or Auth.js and add explicit consent, retention, audit, and row-level-security rules before storing patient records in the cloud.
-
 ## Scripts
 
-- `pnpm dev` starts local development
-- `pnpm lint` runs ESLint
-- `pnpm typecheck` runs TypeScript checks
-- `pnpm test` runs unit tests
-- `pnpm build` creates a production build
-- `pnpm start` runs the production server
+- `pnpm dev` starts local development.
+- `pnpm lint` runs ESLint.
+- `pnpm typecheck` runs TypeScript checks.
+- `pnpm test` runs unit tests.
+- `pnpm build` creates a production build.
+- `pnpm start` runs the production server.
+- `pnpm video:render` renders the Remotion product video.
+- `pnpm video:poster` renders the video poster.
 
-## OpenAI model configuration
+## OpenAI Setup
 
-- `OPENAI_MODEL_DEFAULT` is used for standard OCR and explanation flows
-- `OPENAI_MODEL_VISION` is used for image-based lab OCR and visible-concern explanation
-- `OPENAI_MODEL_PREMIUM` is reserved for future premium or more complex explanation flows
-- `OPENAI_MODEL_FALLBACK` protects the app if the preferred model is unavailable in the account
-- If OpenAI is not configured, the calculator still works and AI routes fail gracefully
+- All OpenAI calls happen server-side in `app/api/ai`.
+- `OPENAI_MODEL_DEFAULT` is used for standard explanation and report-support flows.
+- `OPENAI_MODEL_VISION` is used for lab OCR and visible-concern image analysis.
+- `OPENAI_MODEL_PREMIUM` is reserved for stronger explanation flows when configured.
+- `OPENAI_MODEL_FALLBACK` helps if the preferred model is unavailable.
+- If OpenAI fails or is not configured, deterministic screening still works.
 
-## Camera Health Assist safety
+OpenAI is used for OCR, visible-concern explanation, patient-friendly explanation, bilingual simplification, referral note drafting, and safety review. It is not used for the final medical calculations.
 
-- The camera module does not diagnose disease.
+## Report Sharing
+
+The app uses RHCF-style mobile sharing without backend APIs:
+
+- WhatsApp opens `https://wa.me/?text=...` with the report prefilled.
+- Email opens `mailto:` with the subject and report body prefilled.
+- Native sharing uses `navigator.share` when the device supports it.
+- Copy Report uses the clipboard when available.
+- Download Report saves a plain-text report.
+
+Nothing is auto-sent. The user chooses when and where to send the report.
+
+## Camera Health Assist Safety
+
+- Camera/video does not diagnose disease.
 - The app never predicts exact weight, BMI, diabetes, or hypertension from a photo.
 - Height Assist requires a reference object such as an A4 sheet, QR marker, one-meter strip, or known-height object.
 - Camera outputs are estimates or possible visual risk signs only and require manual confirmation.
-- Final waist risk still comes from manual waist circumference in centimeters.
-- Images are not stored by default; AI image explanation is sent only after the user gives consent.
+- Final waist risk still comes from manual waist circumference.
+- AI visible-concern analysis requires explicit consent and internet access.
 
-## Deployment on Vercel
+## Deployment On Vercel
 
-1. Push the project to a Git repository.
-2. Import the repo into Vercel.
+1. Push the repository to GitHub.
+2. Import the repository into Vercel.
 3. Add the environment variables from `.env.example`.
 4. Deploy normally.
-5. Verify the manifest, icon loading, offline shell, and AI routes on the deployed domain.
+5. Verify the PWA manifest, icons, offline shell, camera permissions, and AI routes on the deployed HTTPS domain.
 
-## Offline behavior
+## Offline Behavior
 
 - The app shell is cached by the service worker.
-- Manual calculator logic works offline after the app has been loaded once.
-- AI OCR and AI explanation need internet access.
-- The UI shows a graceful offline message for AI-only actions.
+- Manual calculator logic works offline after the app has loaded once.
+- AI OCR, AI visible-concern analysis, and AI explanation need internet.
+- Offline AI actions show a graceful internet-needed message.
 
-## How to add Supabase later
+## Future Auth And Database
 
-- Review [`lib/future/database.placeholder.ts`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/database.placeholder.ts)
-- Review [`lib/future/supabase.schema.sql`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/supabase.schema.sql)
-- Review [`lib/future/auth.placeholder.ts`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/auth.placeholder.ts)
-- Add Supabase client wiring in a new repository implementation
-- Replace the placeholder repository with a real persistence layer
-- Add auth flows around the existing placeholder session contract in [`lib/future/auth.placeholder.ts`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/auth.placeholder.ts)
+Future-ready placeholders are available in:
 
-## Project structure
+- `lib/future/auth.placeholder.ts`
+- `lib/future/database.placeholder.ts`
+- `lib/future/supabase.schema.sql`
 
-- `app/` contains the PWA shell, dashboard, offline page, and AI API routes
-- `components/` contains the mobile-first bilingual UI building blocks
-- `lib/calculators/` contains deterministic medical logic
-- `lib/camera/` contains MediaPipe setup and safe camera-estimation rules
-- `lib/ai/` contains OpenAI prompts, schemas, client helpers, and modular services
-- `lib/i18n/` contains local English/Hindi dictionaries
-- `lib/future/` contains auth/database placeholders for later phases
-- `tests/` contains calculator, lab interpretation, risk engine, and translation coverage tests
+Planned roles:
 
-## Manual test checklist
+- patient
+- field_worker
+- clinic_admin
+- doctor
 
-1. Normal healthy case
-2. High BMI case
-3. High waist case
-4. High IDRS case
-5. HbA1c 6.8 case
-6. Fasting glucose 130 case
-7. Random glucose 220 with symptoms
-8. BP 185/125 urgent case
-9. Hindi language switch
-10. Offline mode after first load
-11. OpenAI failure fallback
-12. Lab image OCR with manual verification
-13. Camera permission denied fallback
-14. Height Assist without reference marker refuses estimation
-15. Visible-concern AI requires consent and internet
+Before storing patient records in the cloud, add explicit consent, retention rules, audit logging, Supabase Auth, row-level security, and clinical data governance.
 
-## Known limitations
+## Project Structure
 
-- This version supports adult screening only.
-- Gender options are currently limited to male/female because the supplied public-health cutoffs are sex-specific.
-- Reports are plain text in v1; PDF export is scaffolded conceptually but not implemented yet.
+- `app/` contains the PWA shell, dashboard, offline page, and AI API routes.
+- `components/` contains the mobile-first bilingual UI.
+- `components/camera/` and camera-related components provide camera assistance.
+- `lib/calculators/` contains deterministic medical screening logic.
+- `lib/camera/` contains camera utilities, MediaPipe setup, and safe estimation rules.
+- `lib/ai/` contains OpenAI prompts, schemas, client helpers, and services.
+- `lib/i18n/` contains English/Hindi dictionaries.
+- `lib/utils/` contains validation, unit conversion, report generation, and sharing utilities.
+- `lib/future/` contains auth/database placeholders.
+- `tests/` contains calculator, risk engine, AI schema, report, sharing, camera fallback, unit conversion, and translation coverage tests.
+
+## Manual Test Checklist
+
+1. Open the app on a mobile-width screen.
+2. Confirm there is no separate landing page.
+3. Confirm the hero says "Your personal AI NCD detector".
+4. Start AI Risk Check and complete a normal healthy case.
+5. Test a high BMI case.
+6. Test a high waist case.
+7. Test a high IDRS case.
+8. Test HbA1c 6.8.
+9. Test fasting glucose 130.
+10. Test random glucose 220 with symptoms.
+11. Test BP 185/125 urgent warning.
+12. Switch English/Hindi.
+13. Test height in centimeters.
+14. Test height in feet/inches and confirm BMI uses converted centimeters.
+15. Test weight in kilograms and pounds.
+16. Deny camera permission and confirm upload fallback.
+17. Confirm camera starts only after tapping Start Camera.
+18. Confirm Lab OCR requires consent and OCR values remain editable.
+19. Turn offline mode on and confirm manual calculator still works.
+20. Confirm AI actions show internet-needed messages offline.
+21. Download the report.
+22. Open WhatsApp with the report prefilled.
+23. Open email with subject/body prefilled.
+24. Use native share where supported.
+25. Confirm no diagnosis or medicine prescription language appears.
+
+## Known Limitations
+
+- Adult screening only.
+- Gender options are currently male/female because the supplied waist cutoffs are sex-specific.
+- Reports are plain text; PDF can be added later.
 - OCR quality depends on image clarity and visible units.
 - Browser voice input depends on device and browser support.
 - MediaPipe pose detection depends on lighting, full-body visibility, browser support, and model loading.
 - Camera Health Assist is guidance only and does not replace manual measurements.
 
-## Safety notes
+## Safety Boundaries
 
 - Deterministic code is always the source of truth for medical screening logic.
-- AI never performs the core calculations.
-- Users must explicitly trigger AI OCR or AI explanation before any data is sent to OpenAI.
-- Uploaded lab images are not stored by default by the app.
-- Camera images and visible-concern images are not uploaded unless the user explicitly starts AI analysis.
-- OCR results must be reviewed manually before final use.
+- AI never performs the core BMI, diabetes score, BP, lab-threshold, or overall risk calculations.
+- AI does not diagnose disease or prescribe medicine.
+- OCR values must be reviewed manually before use.
+- Doctor confirmation is required for diagnosis and treatment.
