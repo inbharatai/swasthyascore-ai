@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5fbfb;
+  --foreground: #112331;
+  --app-bg:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
+    linear-gradient(180deg, #f8fdfd 0%, #eef7f7 100%);
+  --brand-700: #0f766e;
+  --brand-800: #115e59;
+  --surface-muted: #edf8f7;
+  --surface-strong: #ddf1ef;
+  --border-soft: #d8ecea;
+  --slate-950: #102332;
+  --slate-900: #173345;
+  --slate-800: #28455a;
+  --slate-700: #466377;
+  --slate-600: #5d778b;
+  --slate-500: #7f97aa;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-fraunces);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), sans-serif;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.18);
+}
+
+.font-display {
+  font-family: var(--font-fraunces), serif;
 }

@@ -1,0 +1,270 @@
+import type { Language } from "@/lib/i18n";
+import { translate } from "@/lib/i18n";
+import type {
+  AiExplanationResult,
+  NormalizedHealthInput,
+  ScreeningResult,
+} from "@/lib/types/health";
+import { buildDeterministicReferralNote } from "@/lib/utils/report";
+import { formatDecimal } from "@/lib/utils/formatting";
+import { MeasurementCard } from "./MeasurementCard";
+import { RecommendationCard } from "./RecommendationCard";
+import { ReferralNote } from "./ReferralNote";
+import { RiskGauge } from "./RiskGauge";
+import { DownloadReportButton } from "./DownloadReportButton";
+
+interface ResultSummaryProps {
+  language: Language;
+  inputSnapshot: NormalizedHealthInput | null;
+  result: ScreeningResult | null;
+  aiExplanation: AiExplanationResult | null;
+  aiError: string | null;
+  aiLoading: boolean;
+  reportContent: string | null;
+  online: boolean;
+  onGenerateExplanation: () => void;
+}
+
+function riskTone(level: ScreeningResult["overallRisk"]["riskLevel"]) {
+  if (level === "LOW") return "low";
+  if (level === "MODERATE") return "moderate";
+  if (level === "HIGH") return "high";
+  return "urgent";
+}
+
+export function ResultSummary({
+  language,
+  inputSnapshot,
+  result,
+  aiExplanation,
+  aiError,
+  aiLoading,
+  reportContent,
+  online,
+  onGenerateExplanation,
+}: ResultSummaryProps) {
+  if (!result || !inputSnapshot) {
+    return (
+      <section
+        id="results"
+        className="rounded-[32px] border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm"
+      >
+        <h2 className="text-2xl font-semibold tracking-tight text-[var(--slate-950)]">
+          {translate(language, "section.results")}
+        </h2>
+        <p className="mt-4 text-sm leading-6 text-[var(--slate-600)]">
+          {translate(language, "result.noData")}
+        </p>
+      </section>
+    );
+  }
+
+  const referralNote =
+    aiExplanation?.doctorReferralNote ??
+    buildDeterministicReferralNote(language, inputSnapshot, result);
+  const reasons = result.overallRisk.reasonKeys.map((key) => translate(language, key));
+  const nextSteps = result.overallRisk.nextStepKeys.map((key) =>
+    translate(language, key),
+  );
+  const adviceItems =
+    aiExplanation?.lifestyleAdvice.length ? aiExplanation.lifestyleAdvice : nextSteps;
+
+  return (
+    <section id="results" className="space-y-5">
+      <RiskGauge language={language} riskLevel={result.overallRisk.riskLevel} />
+
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <MeasurementCard
+          title={translate(language, "bmi.title")}
+          value={formatDecimal(result.bmi.bmi, language)}
+          subtitle={translate(language, result.bmi.categoryKey)}
+          note={translate(language, result.bmi.noteKey)}
+          tone={riskTone(result.overallRisk.riskLevel)}
+        />
+        <MeasurementCard
+          title={translate(language, "waist.title")}
+          value={`${formatDecimal(inputSnapshot.waistCm, language)} ${translate(language, "form.units.cm")}`}
+          subtitle={translate(language, result.waistRisk.messageKey)}
+          note={translate(language, result.waistRisk.noteKey)}
+          tone={result.waistRisk.increasedRisk ? "moderate" : "low"}
+        />
+        <MeasurementCard
+          title={translate(language, "idrs.title")}
+          value={formatDecimal(result.diabetesRisk.score, language, 0)}
+          subtitle={translate(language, result.diabetesRisk.categoryKey)}
+          note={translate(language, result.diabetesRisk.noteKey)}
+          tone={
+            result.diabetesRisk.category === "high"
+              ? "high"
+              : result.diabetesRisk.category === "moderate"
+                ? "moderate"
+                : "low"
+          }
+        />
+        <MeasurementCard
+          title={translate(language, "bp.title")}
+          value={
+            inputSnapshot.systolicBp == null && inputSnapshot.diastolicBp == null
+              ? translate(language, "common.na")
+              : `${inputSnapshot.systolicBp ?? "-"} / ${inputSnapshot.diastolicBp ?? "-"}`
+          }
+          subtitle={translate(language, result.bpRisk.labelKey)}
+          note={translate(language, result.bpRisk.noteKey)}
+          tone={
+            result.bpRisk.status === "urgent"
+              ? "urgent"
+              : result.bpRisk.status === "high"
+                ? "high"
+                : result.bpRisk.status === "elevated"
+                  ? "moderate"
+                  : "low"
+          }
+        />
+        <MeasurementCard
+          title={translate(language, "lab.title")}
+          value={translate(language, result.labInterpretation.summaryKey)}
+          subtitle={
+            result.labInterpretation.entries.length > 0
+              ? result.labInterpretation.entries
+                  .map((entry) => {
+                    const label =
+                      entry.name === "hba1c"
+                        ? translate(language, "form.hba1c")
+                        : entry.name === "fastingGlucose"
+                          ? translate(language, "form.fasting")
+                          : translate(language, "form.random");
+                    return `${label}: ${entry.value}`;
+                  })
+                  .join(" | ")
+              : translate(language, "lab.none")
+          }
+          note={translate(language, result.labInterpretation.noteKey)}
+          tone={
+            result.labInterpretation.hasDiabetesRangeValue
+              ? "high"
+              : result.labInterpretation.hasPrediabetesRangeValue
+                ? "moderate"
+                : "low"
+          }
+        />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <RecommendationCard
+          title={translate(language, "result.reasonsTitle")}
+          items={reasons.length > 0 ? reasons : [translate(language, "next.healthyHabits")]}
+          tone={result.overallRisk.emergencyWarning ? "alert" : "soft"}
+        />
+        <RecommendationCard
+          title={translate(language, "result.nextStepsTitle")}
+          items={nextSteps}
+          tone={result.overallRisk.emergencyWarning ? "alert" : "soft"}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {result.overallRisk.labTestingRecommended ? (
+          <span className="rounded-full bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-800">
+            {translate(language, "result.labTestingRecommended")}
+          </span>
+        ) : null}
+        {result.overallRisk.doctorReferralNeeded ? (
+          <span className="rounded-full bg-orange-100 px-4 py-2 text-xs font-semibold text-orange-800">
+            {translate(language, "result.doctorReferralNeeded")}
+          </span>
+        ) : null}
+        {result.overallRisk.emergencyWarning ? (
+          <span className="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold text-rose-800">
+            {translate(language, "result.emergencyWarning")}
+          </span>
+        ) : null}
+      </div>
+
+      <section
+        id="ai-explanation"
+        className="rounded-[32px] border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">
+              {translate(language, "section.step4")}
+            </p>
+            <h3 className="mt-1 text-xl font-semibold text-[var(--slate-950)]">
+              {translate(language, "ai.explainTitle")}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--slate-600)]">
+              {translate(language, "ai.explainDescription")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onGenerateExplanation}
+            disabled={aiLoading || !online}
+            className="inline-flex items-center justify-center rounded-full bg-[var(--brand-700)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-800)] disabled:cursor-not-allowed disabled:bg-[var(--slate-400)]"
+          >
+            {translate(
+              language,
+              aiLoading ? "ai.explainLoading" : "ai.explainButton",
+            )}
+          </button>
+        </div>
+
+        {!online ? (
+          <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {translate(language, "ai.explainOffline")}
+          </p>
+        ) : null}
+        {aiError ? (
+          <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {aiError}
+          </p>
+        ) : null}
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          <RecommendationCard
+            title={translate(language, "ai.summaryTitle")}
+            items={[
+              aiExplanation?.summary ?? translate(language, "ai.explainFallback"),
+              aiExplanation?.simpleExplanation ??
+                translate(language, "fallback.explanation"),
+            ]}
+          />
+          <RecommendationCard
+            title={translate(language, "ai.lifestyleAdvice")}
+            items={adviceItems}
+          />
+        </div>
+
+        {aiExplanation?.topRiskFactors.length ? (
+          <div className="mt-5">
+            <RecommendationCard
+              title={translate(language, "ai.topFactors")}
+              items={aiExplanation.topRiskFactors}
+            />
+          </div>
+        ) : null}
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+        <ReferralNote
+          language={language}
+          note={referralNote}
+          isAiEnhanced={Boolean(aiExplanation?.doctorReferralNote)}
+        />
+        <section className="rounded-[28px] border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-[var(--slate-950)]">
+            {translate(language, "report.title")}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-[var(--slate-600)]">
+            {translate(language, "result.optionalAi")}
+          </p>
+          <div className="mt-5">
+            {reportContent ? (
+              <DownloadReportButton language={language} content={reportContent} />
+            ) : null}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
