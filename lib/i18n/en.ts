@@ -35,7 +35,7 @@ export const en = {
   "auth.screeningOnly": "Screening only",
   "auth.title": "Sign in locally to start SwasthyaScore AI",
   "auth.description":
-    "This MVP uses device-local authentication and local storage first. It keeps the app ready for Supabase later without sending patient records to a database today.",
+    "This app uses device-local authentication and local storage first. It stays ready for Supabase later without sending patient records to a database today.",
   "auth.point.local": "Local session on this device",
   "auth.point.noCloud": "No database required in v1",
   "auth.point.roles": "Role-based app context",

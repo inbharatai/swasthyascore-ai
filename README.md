@@ -2,7 +2,7 @@
 
 SwasthyaScore AI is a mobile-first bilingual PWA for quick NCD screening in Bharat. It helps laypersons, NGOs, field workers, clinics, and community health workers screen obesity risk, diabetes risk, waist risk, and blood pressure risk in under a minute.
 
-This MVP is intentionally structured so manual screening works without a database and without OpenAI. It includes a local-device authentication gate for role-based access context, while patient and screening data remains local-first. AI is optional and only used when the user explicitly asks for lab OCR, visible-concern explanation, referral-note support, or patient-friendly explanation.
+This version is intentionally structured so manual screening works without a database and without OpenAI. It includes a local-device authentication gate for role-based access context, while patient and screening data remains local-first. AI is optional and only used when the user explicitly asks for lab OCR, visible-concern explanation, referral-note support, or patient-friendly explanation.
 
 ## Medical disclaimer
 
@@ -76,7 +76,7 @@ http://localhost:3000
 
 ## Authentication and storage in v1
 
-- Authentication is local-device only in this MVP.
+- Authentication is local-device only in this version.
 - The local session stores display name, role, selected language, and timestamps in browser `localStorage`.
 - Screening form drafts are also stored in browser `localStorage`.
 - No Supabase database is required for v1.
