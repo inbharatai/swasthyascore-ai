@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { estimateBodyRiskFromLandmarks } from "@/lib/camera/bodyRiskEstimate";
+import { getFriendlyCameraErrorKey } from "@/lib/camera/camera";
 import { estimateHeightWithReference } from "@/lib/camera/heightEstimate";
 import { evaluateVisibleRiskFallback } from "@/lib/camera/visibleRiskRules";
 
@@ -58,5 +59,13 @@ describe("camera safety rules", () => {
     expect(result.notDiagnosis).toBe(true);
     expect(result.category).toBe("foot_wound_concern");
     expect(result.recommendedActionKeys).toContain("next.doctorSoon");
+  });
+
+  it("maps permission denial to a friendly camera error", () => {
+    const error = new DOMException("denied", "NotAllowedError");
+
+    expect(getFriendlyCameraErrorKey(error)).toBe(
+      "camera.permissionDeniedError",
+    );
   });
 });

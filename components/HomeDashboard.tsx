@@ -507,7 +507,7 @@ export function HomeDashboard({
   return (
     <main
       id="top"
-      className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 pb-36 pt-4 sm:px-6 lg:px-8"
+      className="mx-auto flex w-full max-w-6xl scroll-mb-40 flex-col gap-5 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 lg:px-8"
     >
       {activeTab === "home" ? (
         <HomeView

@@ -46,7 +46,7 @@ export function validateHealthForm(data: HealthFormData): ValidationResult {
   const heightCm = parseOptionalNumber(data.heightCm);
   if (heightCm == null) {
     fieldErrors.heightCm = "validation.heightRequired";
-  } else if (heightCm < 100 || heightCm > 250) {
+  } else if (heightCm < 50 || heightCm > 250) {
     fieldErrors.heightCm = "validation.heightRange";
   }
 

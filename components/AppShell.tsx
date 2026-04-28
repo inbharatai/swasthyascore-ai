@@ -1,21 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore, useState } from "react";
+import { ShieldCheck, WifiOff } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import type { AppTab } from "@/lib/types/navigation";
 import { useClientReady } from "@/lib/utils/clientReady";
-import {
-  getServerLocalSession,
-  getStoredLocalSession,
-  subscribeToLocalSession,
-} from "@/lib/auth/localAuth";
-import { AuthGate } from "./AuthGate";
 import { LanguageToggle } from "./LanguageToggle";
 import { HomeDashboard } from "./HomeDashboard";
 import { BottomNav } from "./BottomNav";
 import { InstallPWAButton } from "./InstallPWAButton";
-import { UserProfileMenu } from "./UserProfileMenu";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -102,11 +96,6 @@ export function AppShell() {
     getOnlineStatus,
     () => true,
   );
-  const session = useSyncExternalStore(
-    subscribeToLocalSession,
-    getStoredLocalSession,
-    getServerLocalSession,
-  );
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(
     null,
   );
@@ -192,21 +181,24 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] pb-24 text-[var(--slate-900)]">
-      <AuthGate language={language} onLanguageChange={setLanguage}>
-      <div className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-700)]">
+    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--slate-900)]">
+      <header className="sticky top-0 z-30 border-b border-white/60 bg-white/[0.82] pt-[env(safe-area-inset-top)] shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-extrabold tracking-tight text-[var(--slate-950)]">
               {translate(language, "app.name")}
             </p>
-            <p className="mt-1 text-sm text-[var(--slate-600)]">
-              {translate(language, "app.safety")}
+            <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] font-semibold text-[var(--slate-600)]">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[var(--brand-700)]" />
+              <span>{translate(language, "app.headerSubtitle")}</span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {session ? (
-              <UserProfileMenu language={language} session={session} />
+          <div className="flex shrink-0 items-center gap-2">
+            {!online ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
+                <WifiOff className="h-3.5 w-3.5" />
+                {translate(language, "common.offline")}
+              </span>
             ) : null}
             <InstallPWAButton
               language={language}
@@ -215,13 +207,13 @@ export function AppShell() {
               showIosHint={showIosHint}
               onInstall={handleInstall}
             />
-            <LanguageToggle language={language} onChange={setLanguage} />
+            <LanguageToggle language={language} onChange={setLanguage} compact />
           </div>
         </div>
-      </div>
+      </header>
 
-      {(installEvent || showIosHint || installed || !online) && (
-        <div className="mx-auto mt-4 w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+      {(installEvent || showIosHint || !online) && (
+        <div className="mx-auto mt-3 w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-[28px] border border-[var(--border-soft)] bg-white/95 p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -262,7 +254,6 @@ export function AppShell() {
         activeTab={activeTab}
         onChange={handleTabChange}
       />
-      </AuthGate>
     </div>
   );
 }

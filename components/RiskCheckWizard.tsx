@@ -151,7 +151,7 @@ export function RiskCheckWizard({
         />
       ) : null}
 
-      <div className="sticky bottom-24 z-20 rounded-full border border-white/70 bg-white/90 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
+      <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 rounded-full border border-white/70 bg-white/90 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
         <div className="flex items-center gap-2">
           <button
             type="button"

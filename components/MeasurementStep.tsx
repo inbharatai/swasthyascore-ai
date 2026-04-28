@@ -5,7 +5,9 @@ import type {
 } from "@/lib/types/health";
 import type { Language, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
+import { HeightInput } from "./HeightInput";
 import { TextField, WizardCard } from "./ui/FormControls";
+import { WeightInput } from "./WeightInput";
 
 interface MeasurementStepProps {
   language: Language;
@@ -51,26 +53,20 @@ export function MeasurementStep({
             </div>
           </div>
         </div>
-        <TextField
-          label={translate(language, "form.height")}
-          value={formData.heightCm}
-          onChange={(value) => onChange("heightCm", value)}
-          type="number"
-          inputMode="decimal"
-          unit={translate(language, "form.units.cm")}
+        <HeightInput
+          language={language}
+          valueCm={formData.heightCm}
+          onChangeCm={(value) => onChange("heightCm", value)}
           error={
             fieldErrors.heightCm
               ? translate(language, fieldErrors.heightCm)
               : undefined
           }
         />
-        <TextField
-          label={translate(language, "form.weight")}
-          value={formData.weightKg}
-          onChange={(value) => onChange("weightKg", value)}
-          type="number"
-          inputMode="decimal"
-          unit={translate(language, "form.units.kg")}
+        <WeightInput
+          language={language}
+          valueKg={formData.weightKg}
+          onChangeKg={(value) => onChange("weightKg", value)}
           error={
             fieldErrors.weightKg
               ? translate(language, fieldErrors.weightKg)

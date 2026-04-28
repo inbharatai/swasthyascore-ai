@@ -58,14 +58,26 @@ export async function createPoseLandmarker() {
     poseLandmarkerPromise = import("@mediapipe/tasks-vision").then(
       async ({ FilesetResolver, PoseLandmarker }) => {
         const vision = await FilesetResolver.forVisionTasks(WASM_PATH);
-        return PoseLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: MODEL_PATH,
-            delegate: "GPU",
-          },
-          runningMode: "VIDEO",
-          numPoses: 1,
-        }) as Promise<PoseLandmarkerInstance>;
+        const baseOptions = {
+          modelAssetPath: MODEL_PATH,
+        };
+
+        try {
+          return (await PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              ...baseOptions,
+              delegate: "GPU",
+            },
+            runningMode: "VIDEO",
+            numPoses: 1,
+          })) as PoseLandmarkerInstance;
+        } catch {
+          return PoseLandmarker.createFromOptions(vision, {
+            baseOptions,
+            runningMode: "VIDEO",
+            numPoses: 1,
+          }) as Promise<PoseLandmarkerInstance>;
+        }
       },
     );
   }

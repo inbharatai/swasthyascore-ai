@@ -4,12 +4,15 @@ export const hi = {
   "app.name": "SwasthyaScore AI",
   "app.tagline": "60 सेकंड में मोटापा, डायबिटीज़ और BP जोखिम स्क्रीनिंग",
   "app.safety": "यह केवल स्क्रीनिंग है। यह मेडिकल डायग्नोसिस नहीं है।",
+  "app.headerSubtitle": "केवल स्क्रीनिंग • निदान नहीं",
   "app.privacy":
     "जब तक आप AI फीचर नहीं चुनते, आपका डेटा इसी डिवाइस पर रहता है।",
   "app.offlineReady": "मैनुअल कैलकुलेशन ऑफलाइन भी काम करता है",
   "app.mobileBadge": "भारत के लिए बना",
   "common.english": "English",
   "common.hindi": "हिंदी",
+  "common.enShort": "EN",
+  "common.hiShort": "हि",
   "common.optional": "वैकल्पिक",
   "common.required": "ज़रूरी",
   "common.calculate": "जोखिम निकालें",
@@ -62,7 +65,16 @@ export const hi = {
   "form.male": "पुरुष",
   "form.female": "महिला",
   "form.height": "लंबाई",
+  "form.heightHelper": "सेंटीमीटर या फीट/इंच चुनें। BMI में बदली हुई सेंटीमीटर वैल्यू उपयोग होगी।",
+  "form.heightCm": "लंबाई सेंटीमीटर में",
+  "form.heightFeet": "फीट",
+  "form.heightInches": "इंच",
+  "form.convertedHeight": "बदली गई ऊंचाई: {value} सेमी",
   "form.weight": "वज़न",
+  "form.weightHelper": "अंतिम गणना में किलो उपयोग होगा। पाउंड को इसी डिवाइस पर किलो में बदला जाता है।",
+  "form.weightKg": "वज़न किलो में",
+  "form.weightLbs": "वज़न पाउंड में",
+  "form.convertedWeight": "बदला गया वज़न: {value} किलो",
   "form.waist": "कमर का घेरा",
   "form.waistHelper":
     "आमतौर पर नाभि के स्तर पर पेट के चारों ओर नापें।",
@@ -89,6 +101,10 @@ export const hi = {
     "AI फीचर तभी डेटा भेजते हैं जब आप OCR या AI explanation चुनते हैं।",
   "form.units.cm": "सेमी",
   "form.units.kg": "किलो",
+  "form.units.ftIn": "फीट/इंच",
+  "form.units.feet": "फीट",
+  "form.units.inches": "इंच",
+  "form.units.lbs": "पाउंड",
   "form.units.years": "वर्ष",
   "form.units.mmhg": "mmHg",
   "form.units.percent": "%",
@@ -110,9 +126,13 @@ export const hi = {
   "validation.ageRange": "उम्र 18 से 120 साल के बीच होनी चाहिए।",
   "validation.genderRequired": "लिंग चुनें।",
   "validation.heightRequired": "लंबाई भरें।",
-  "validation.heightRange": "लंबाई 100 से 250 सेमी के बीच होनी चाहिए।",
+  "validation.heightRange": "लंबाई 50 से 250 सेमी के बीच होनी चाहिए।",
+  "validation.heightFeetInchesRange":
+    "फीट 1–8 और इंच 0–11.99 के बीच होना चाहिए।",
   "validation.weightRequired": "वज़न भरें।",
   "validation.weightRange": "वज़न 20 से 350 किलो के बीच होना चाहिए।",
+  "validation.weightPoundsRange":
+    "स्क्रीनिंग से पहले वज़न 20–350 किलो के बराबर होना चाहिए।",
   "validation.waistRequired": "कमर का घेरा भरें।",
   "validation.waistRange": "कमर 40 से 200 सेमी के बीच होनी चाहिए।",
   "validation.activityRequired": "शारीरिक गतिविधि चुनें।",
@@ -301,7 +321,7 @@ export const hi = {
   "status.installButton": "ऐप इंस्टॉल करें",
   "status.iosInstallHint":
     "iPhone पर Share दबाएं, फिर Add to Home Screen चुनें।",
-  "status.installed": "ऐप इंस्टॉल हो गया",
+  "status.installed": "इंस्टॉल",
   "fallback.explanation":
     "दर्ज मानों के आधार पर यह स्क्रीनिंग lifestyle और समय पर medical follow-up पर ध्यान देने की सलाह देती है।",
   "fallback.referralLow":
@@ -418,9 +438,29 @@ export const hi = {
   "camera.previewDescription":
     "कैमरा शुरू करें, पूरा शरीर फ्रेम में रखें, और लंबाई के लिए रेफरेंस मार्कर रखें।",
   "camera.start": "कैमरा शुरू करें",
+  "camera.loading": "खुल रहा है...",
+  "camera.capture": "फोटो लें",
+  "camera.switch": "बदलें",
   "camera.stop": "कैमरा रोकें",
+  "camera.permissionIntro":
+    "कैमरा केवल स्क्रीनिंग सहायता के लिए उपयोग होता है। इमेज डिफॉल्ट रूप से स्टोर नहीं होती।",
+  "camera.uploadFallback": "इमेज अपलोड करें",
+  "camera.uploadFallbackHelp":
+    "अगर लाइव कैमरा ब्लॉक है या उपलब्ध नहीं है, फोटो अपलोड करें और मैनुअल माप जारी रखें।",
+  "camera.captureReady": "कैप्चर की गई इमेज तैयार है",
+  "camera.captureFailed": "कैमरा फ्रेम कैप्चर नहीं हुआ। फिर कोशिश करें या इमेज अपलोड करें।",
   "camera.permissionError":
     "कैमरा नहीं खुल सका। ब्राउज़र अनुमति जांचें या मैनुअल एंट्री करें।",
+  "camera.permissionDeniedError":
+    "कैमरा अनुमति ब्लॉक है। ब्राउज़र सेटिंग में कैमरा अनुमति दें या इमेज अपलोड करें।",
+  "camera.unsupportedError":
+    "इस ब्राउज़र में कैमरा सपोर्ट नहीं है। कृपया इमेज अपलोड करें।",
+  "camera.insecureError":
+    "कैमरा के लिए HTTPS या localhost चाहिए। कृपया सुरक्षित लिंक से PWA खोलें।",
+  "camera.deviceBusyError":
+    "कैमरा किसी दूसरी ऐप में उपयोग हो रहा है। दूसरी ऐप बंद करके फिर कोशिश करें।",
+  "camera.genericError":
+    "कैमरा नहीं खुल सका। फिर कोशिश करें या इमेज अपलोड करें।",
   "camera.guideFullBody": "सिर, कंधे, कूल्हे, घुटने और पैर दिखने चाहिए।",
   "camera.guideReference": "लंबाई असिस्ट के लिए व्यक्ति के पास रेफरेंस मार्कर रखें।",
   "camera.mode.height": "लंबाई असिस्ट",

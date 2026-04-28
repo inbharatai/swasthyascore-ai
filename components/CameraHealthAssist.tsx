@@ -1,8 +1,14 @@
 "use client";
 
 import { Activity, Eye, Ruler, ScanLine } from "lucide-react";
-import { useRef, useState } from "react";
-import { requestUserCamera, stopCameraStream } from "@/lib/camera/camera";
+import { useEffect, useRef, useState } from "react";
+import {
+  captureFrame,
+  enumerateCameraDevices,
+  getFriendlyCameraErrorKey,
+  requestCameraStream,
+  stopCameraStream,
+} from "@/lib/camera/camera";
 import type { HealthFormChangeHandler } from "@/lib/types/health";
 import type { Language } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
@@ -42,12 +48,32 @@ export function CameraHealthAssist({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [active, setActive] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<CameraMode>("height");
   const [error, setError] = useState<string | null>(null);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceIndex, setDeviceIndex] = useState(0);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-  async function handleStart() {
+  useEffect(() => {
+    return () => {
+      stopCameraStream(streamRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (capturedImage?.startsWith("blob:")) {
+        URL.revokeObjectURL(capturedImage);
+      }
+    };
+  }, [capturedImage]);
+
+  async function handleStart(deviceId?: string) {
+    setLoading(true);
     try {
-      const stream = await requestUserCamera();
+      const stream = await requestCameraStream({ deviceId });
+      stopCameraStream(streamRef.current);
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -55,8 +81,12 @@ export function CameraHealthAssist({
       }
       setActive(true);
       setError(null);
-    } catch {
-      setError(translate(language, "camera.permissionError"));
+      const availableDevices = await enumerateCameraDevices();
+      setDevices(availableDevices);
+    } catch (caughtError) {
+      setError(translate(language, getFriendlyCameraErrorKey(caughtError)));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -67,6 +97,42 @@ export function CameraHealthAssist({
       videoRef.current.srcObject = null;
     }
     setActive(false);
+  }
+
+  function handleCapture() {
+    const video = videoRef.current;
+    if (!video) {
+      setError(translate(language, "camera.startFirst"));
+      return;
+    }
+
+    const image = captureFrame(video);
+    if (!image) {
+      setError(translate(language, "camera.captureFailed"));
+      return;
+    }
+
+    setCapturedImage(image);
+    setError(null);
+  }
+
+  async function handleSwitchCamera() {
+    if (devices.length <= 1) {
+      return;
+    }
+
+    const nextIndex = (deviceIndex + 1) % devices.length;
+    setDeviceIndex(nextIndex);
+    await handleStart(devices[nextIndex]?.deviceId);
+  }
+
+  function handleImageUpload(file: File) {
+    if (capturedImage?.startsWith("blob:")) {
+      URL.revokeObjectURL(capturedImage);
+    }
+
+    setCapturedImage(URL.createObjectURL(file));
+    setError(null);
   }
 
   return (
@@ -90,9 +156,15 @@ export function CameraHealthAssist({
         language={language}
         videoRef={videoRef}
         active={active}
+        loading={loading}
         error={error}
-        onStart={handleStart}
+        capturedImage={capturedImage}
+        canSwitch={devices.length > 1}
+        onStart={() => handleStart()}
         onStop={handleStop}
+        onCapture={handleCapture}
+        onSwitch={handleSwitchCamera}
+        onImageUpload={handleImageUpload}
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

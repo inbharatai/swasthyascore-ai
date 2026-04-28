@@ -53,7 +53,7 @@ export function TextField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           aria-invalid={Boolean(error)}
-          className="min-w-0 flex-1 bg-transparent py-3 text-base font-semibold text-[var(--slate-950)] outline-none placeholder:text-[var(--slate-500)]"
+          className="min-w-0 flex-1 scroll-mb-40 bg-transparent py-3 text-base font-semibold text-[var(--slate-950)] outline-none placeholder:text-[var(--slate-500)]"
         />
         {unit ? (
           <span className="ml-3 rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--slate-600)]">
@@ -93,7 +93,7 @@ export function SelectField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={Boolean(error)}
-        className="mt-2 h-14 w-full rounded-[22px] border border-[var(--border-soft)] bg-white px-4 text-base font-semibold text-[var(--slate-950)] shadow-sm outline-none transition focus:border-[var(--brand-700)] focus:ring-4 focus:ring-teal-100"
+        className="mt-2 h-14 w-full scroll-mb-40 rounded-[22px] border border-[var(--border-soft)] bg-white px-4 text-base font-semibold text-[var(--slate-950)] shadow-sm outline-none transition focus:border-[var(--brand-700)] focus:ring-4 focus:ring-teal-100"
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (

@@ -2,12 +2,15 @@ export const en = {
   "app.name": "SwasthyaScore AI",
   "app.tagline": "60-second obesity, diabetes & BP risk screening",
   "app.safety": "Screening only. Not a medical diagnosis.",
+  "app.headerSubtitle": "Screening only • Not a diagnosis",
   "app.privacy":
     "Your data stays on this device unless you choose an AI feature.",
   "app.offlineReady": "Works offline for manual calculations",
   "app.mobileBadge": "Made for Bharat",
   "common.english": "English",
   "common.hindi": "हिंदी",
+  "common.enShort": "EN",
+  "common.hiShort": "हि",
   "common.optional": "Optional",
   "common.required": "Required",
   "common.calculate": "Calculate risk",
@@ -148,7 +151,16 @@ export const en = {
   "form.male": "Male",
   "form.female": "Female",
   "form.height": "Height",
+  "form.heightHelper": "Choose centimeters or feet/inches. BMI uses the converted centimeter value.",
+  "form.heightCm": "Height in centimeters",
+  "form.heightFeet": "Feet",
+  "form.heightInches": "Inches",
+  "form.convertedHeight": "Converted height: {value} cm",
   "form.weight": "Weight",
+  "form.weightHelper": "Kilograms are used for final calculation. Pounds are converted locally.",
+  "form.weightKg": "Weight in kilograms",
+  "form.weightLbs": "Weight in pounds",
+  "form.convertedWeight": "Converted weight: {value} kg",
   "form.waist": "Waist circumference",
   "form.waistHelper":
     "Measure around the abdomen, usually at the level of the navel.",
@@ -175,6 +187,10 @@ export const en = {
     "AI features send only the data needed for OCR or explanation after you choose them.",
   "form.units.cm": "cm",
   "form.units.kg": "kg",
+  "form.units.ftIn": "ft/in",
+  "form.units.feet": "ft",
+  "form.units.inches": "in",
+  "form.units.lbs": "lbs",
   "form.units.years": "yrs",
   "form.units.mmhg": "mmHg",
   "form.units.percent": "%",
@@ -196,9 +212,13 @@ export const en = {
   "validation.ageRange": "Age should be between 18 and 120 years.",
   "validation.genderRequired": "Select gender.",
   "validation.heightRequired": "Enter height.",
-  "validation.heightRange": "Height should be between 100 and 250 cm.",
+  "validation.heightRange": "Height should be between 50 and 250 cm.",
+  "validation.heightFeetInchesRange":
+    "Feet should be 1–8 and inches should be 0–11.99.",
   "validation.weightRequired": "Enter weight.",
   "validation.weightRange": "Weight should be between 20 and 350 kg.",
+  "validation.weightPoundsRange":
+    "Weight should convert to 20–350 kg before screening.",
   "validation.waistRequired": "Enter waist circumference.",
   "validation.waistRange": "Waist should be between 40 and 200 cm.",
   "validation.activityRequired": "Select physical activity.",
@@ -398,7 +418,7 @@ export const en = {
   "status.installButton": "Install app",
   "status.iosInstallHint":
     "On iPhone, use Share and then Add to Home Screen.",
-  "status.installed": "App installed",
+  "status.installed": "Installed",
   "camera.kicker": "Camera Health Assist",
   "camera.title": "Camera Health Assist",
   "camera.subtitle":
@@ -409,9 +429,29 @@ export const en = {
   "camera.previewDescription":
     "Start the camera, keep the full body in frame, and use a reference marker for height assist.",
   "camera.start": "Start camera",
+  "camera.loading": "Opening...",
+  "camera.capture": "Capture",
+  "camera.switch": "Switch",
   "camera.stop": "Stop camera",
+  "camera.permissionIntro":
+    "Camera is used only for screening assistance. Images are not stored by default.",
+  "camera.uploadFallback": "Upload image",
+  "camera.uploadFallbackHelp":
+    "If live camera is blocked or unavailable, upload a photo and continue with manual measurements.",
+  "camera.captureReady": "Captured image ready",
+  "camera.captureFailed": "Could not capture the camera frame. Please try again or upload an image.",
   "camera.permissionError":
     "Camera could not be opened. Check browser permission or use manual entry.",
+  "camera.permissionDeniedError":
+    "Camera permission was blocked. Please allow camera access in your browser settings or upload an image.",
+  "camera.unsupportedError":
+    "Camera is not supported in this browser. Please upload an image.",
+  "camera.insecureError":
+    "Camera requires HTTPS or localhost. Please open the PWA from a secure link.",
+  "camera.deviceBusyError":
+    "Camera is being used by another app. Close other apps and try again.",
+  "camera.genericError":
+    "Camera could not be opened. Please try again or upload an image.",
   "camera.guideFullBody": "Keep head, shoulders, hips, knees, and feet visible.",
   "camera.guideReference": "Place the reference marker near the person for height assist.",
   "camera.mode.height": "Height Assist",
