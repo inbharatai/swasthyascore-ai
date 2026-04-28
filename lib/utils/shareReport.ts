@@ -1,5 +1,6 @@
 export function buildWhatsAppShareUrl(reportText: string): string {
-  return `https://wa.me/?text=${encodeURIComponent(reportText)}`;
+  const safeText = reportText.slice(0, 2000);
+  return `https://wa.me/?text=${encodeURIComponent(safeText)}`;
 }
 
 export function buildEmailShareUrl(reportText: string, subject: string): string {
@@ -36,12 +37,15 @@ export async function shareNative(reportText: string, title: string): Promise<bo
     return false;
   }
 
-  await navigator.share({
-    title,
-    text: reportText,
-  });
-
-  return true;
+  try {
+    await navigator.share({
+      title,
+      text: reportText,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function copyReport(reportText: string): Promise<boolean> {
@@ -53,6 +57,10 @@ export async function copyReport(reportText: string): Promise<boolean> {
     return false;
   }
 
-  await navigator.clipboard.writeText(reportText);
-  return true;
+  try {
+    await navigator.clipboard.writeText(reportText);
+    return true;
+  } catch {
+    return false;
+  }
 }

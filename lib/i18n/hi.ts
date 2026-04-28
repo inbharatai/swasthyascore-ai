@@ -246,6 +246,9 @@ export const hi = {
   "report.shareTitle": "Smart screening report शेयर करें",
   "report.shareDescription":
     "रिपोर्ट download, copy करें या WhatsApp/email में पहले से भरी हुई खोलें। भेजना आपके हाथ में है।",
+  "report.openShareSheet": "रिपोर्ट शेयर करें",
+  "report.shareSheetTitle": "रिपोर्ट शेयर करें",
+  "report.closeShareSheet": "Share options बंद करें",
   "report.shareWhatsApp": "WhatsApp पर भेजें",
   "report.shareEmail": "Email से भेजें",
   "report.shareNative": "Phone से शेयर करें",

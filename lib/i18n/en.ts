@@ -329,6 +329,9 @@ export const en = {
   "report.shareTitle": "Share smart screening report",
   "report.shareDescription":
     "Download, copy, or open WhatsApp/email with the report pre-filled. You choose when to send.",
+  "report.openShareSheet": "Share Report",
+  "report.shareSheetTitle": "Share report",
+  "report.closeShareSheet": "Close share options",
   "report.shareWhatsApp": "Share on WhatsApp",
   "report.shareEmail": "Share by Email",
   "report.shareNative": "Share from Phone",
