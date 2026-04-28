@@ -1,4 +1,4 @@
-const CACHE_NAME = "swasthya-score-v1";
+const CACHE_NAME = "swasthya-score-v2";
 const IS_LOCAL_DEV =
   self.location.hostname === "localhost" ||
   self.location.hostname === "127.0.0.1" ||
@@ -7,6 +7,7 @@ const APP_SHELL = [
   "/",
   "/offline",
   "/manifest.json",
+  "/service-worker.js",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/maskable-512.png",

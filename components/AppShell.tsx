@@ -122,7 +122,7 @@ export function AppShell() {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       if (process.env.NODE_ENV === "production") {
-        navigator.serviceWorker.register("/sw.js").catch(() => {
+        navigator.serviceWorker.register("/service-worker.js").catch(() => {
           return undefined;
         });
       } else {

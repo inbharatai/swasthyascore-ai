@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   Activity,
   Camera,
@@ -7,6 +8,7 @@ import {
   HeartPulse,
   Languages,
   MessageCircleHeart,
+  PlayCircle,
   ShieldCheck,
 } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
@@ -76,6 +78,24 @@ const kpiCards = [
   { key: "home.kpi.offline", icon: FileText },
 ] as const;
 
+const productScreens = [
+  {
+    src: "/product-media/screenshots/02-home-dashboard.png",
+    titleKey: "media.screen.dashboard.title",
+    captionKey: "media.screen.dashboard.caption",
+  },
+  {
+    src: "/product-media/screenshots/07-results-summary.png",
+    titleKey: "media.screen.results.title",
+    captionKey: "media.screen.results.caption",
+  },
+  {
+    src: "/product-media/screenshots/10-lab-ocr-after-upload.png",
+    titleKey: "media.screen.ocr.title",
+    captionKey: "media.screen.ocr.caption",
+  },
+] as const;
+
 function firstErrorStep(
   errors: Partial<Record<keyof HealthFormData, TranslationKey>>,
 ) {
@@ -120,6 +140,72 @@ function AppStatusChip({
         {translate(language, online ? "common.online" : "common.offline")}
       </span>
     </div>
+  );
+}
+
+function ProductMediaShowcase({ language }: { language: Language }) {
+  return (
+    <section className="overflow-hidden rounded-[36px] border border-white/70 bg-white/95 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-700)]">
+            {translate(language, "media.kicker")}
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--slate-950)]">
+            {translate(language, "media.title")}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--slate-600)]">
+            {translate(language, "media.description")}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">
+          <PlayCircle className="h-4 w-4" />
+          {translate(language, "media.videoBadge")}
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[30px] bg-[linear-gradient(135deg,#ecfeff,#eff6ff)] p-3 shadow-inner">
+          <video
+            className="aspect-[9/16] max-h-[620px] w-full rounded-[24px] bg-slate-950 object-cover shadow-[0_24px_70px_rgba(15,23,42,0.18)] sm:aspect-video"
+            controls
+            muted
+            playsInline
+            preload="metadata"
+            poster="/product-media/swasthyascore-demo-poster.png"
+          >
+            <source src="/product-media/swasthyascore-demo.webm" type="video/webm" />
+            {translate(language, "media.videoFallback")}
+          </video>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          {productScreens.map((screen) => (
+            <article
+              key={screen.src}
+              className="grid grid-cols-[96px_1fr] gap-3 rounded-[26px] border border-[var(--border-soft)] bg-white p-3 shadow-sm sm:grid-cols-1 lg:grid-cols-[96px_1fr]"
+            >
+              <Image
+                src={screen.src}
+                alt={translate(language, screen.titleKey)}
+                width={192}
+                height={384}
+                className="h-36 w-24 rounded-[20px] object-cover object-top shadow-sm sm:h-48 sm:w-full lg:h-36 lg:w-24"
+                loading="lazy"
+              />
+              <div className="min-w-0 self-center">
+                <h3 className="text-sm font-bold text-[var(--slate-950)]">
+                  {translate(language, screen.titleKey)}
+                </h3>
+                <p className="mt-2 text-xs leading-5 text-[var(--slate-600)]">
+                  {translate(language, screen.captionKey)}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -229,6 +315,8 @@ function HomeView({
           ))}
         </div>
       </section>
+
+      <ProductMediaShowcase language={language} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <p className="rounded-[28px] border border-white/70 bg-white/90 p-5 text-sm leading-6 text-[var(--slate-700)] shadow-sm">

@@ -84,6 +84,21 @@ export const en = {
   "home.kpi.offline": "Manual calculator works offline",
   "home.modules": "Modules",
   "home.modulesTitle": "Choose what you want to do",
+  "media.kicker": "Product walkthrough",
+  "media.title": "See the mobile screening flow",
+  "media.description":
+    "Real QA screenshots from the deployed PWA show the dashboard, guided calculator, deterministic results, AI explanation, lab OCR, camera assist, and report flow.",
+  "media.videoBadge": "Demo video",
+  "media.videoFallback": "Your browser does not support embedded video.",
+  "media.screen.dashboard.title": "Mobile dashboard",
+  "media.screen.dashboard.caption":
+    "The first screen is the working PWA dashboard, not a separate landing page.",
+  "media.screen.results.title": "Clear risk summary",
+  "media.screen.results.caption":
+    "BMI, waist, diabetes score, BP, lab flags, reasons, and next steps stay deterministic.",
+  "media.screen.ocr.title": "AI lab OCR",
+  "media.screen.ocr.caption":
+    "A report image can be read with AI, then every extracted value remains editable.",
   "section.form": "Risk check form",
   "section.lab": "Lab report upload",
   "section.results": "Screening results",

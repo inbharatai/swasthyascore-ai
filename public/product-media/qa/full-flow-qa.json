@@ -1,0 +1,163 @@
+{
+  "targetUrl": "https://swasthyascore-ai.vercel.app",
+  "generatedAt": "2026-04-28T07:14:25.516Z",
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "deviceScaleFactor": 2
+  },
+  "sampleReport": "public/product-media/sample-lab-report.png",
+  "screenshots": [
+    "public/product-media/screenshots/01-local-auth.png",
+    "public/product-media/screenshots/02-home-dashboard.png",
+    "public/product-media/screenshots/03-risk-basic-step.png",
+    "public/product-media/screenshots/04-risk-measurements-step.png",
+    "public/product-media/screenshots/05-risk-factors-step.png",
+    "public/product-media/screenshots/06-bp-labs-step.png",
+    "public/product-media/screenshots/07-results-summary.png",
+    "public/product-media/screenshots/08-ai-explanation.png",
+    "public/product-media/screenshots/09-lab-ocr-empty.png",
+    "public/product-media/screenshots/10-lab-ocr-after-upload.png",
+    "public/product-media/screenshots/11-camera-assist.png",
+    "public/product-media/screenshots/12-camera-start-state.png",
+    "public/product-media/screenshots/13-report-download.png"
+  ],
+  "video": "public/product-media/swasthyascore-demo.webm",
+  "qa": [
+    {
+      "name": "Production app loads local auth screen",
+      "status": "passed"
+    },
+    {
+      "name": "Captured local auth screen",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/01-local-auth.png"
+    },
+    {
+      "name": "Local auth creates session and opens dashboard",
+      "status": "passed"
+    },
+    {
+      "name": "Captured mobile dashboard",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/02-home-dashboard.png"
+    },
+    {
+      "name": "Captured Risk Check basic details step",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/03-risk-basic-step.png"
+    },
+    {
+      "name": "Captured body measurements step with demo values",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/04-risk-measurements-step.png"
+    },
+    {
+      "name": "Captured diabetes risk factor step",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/05-risk-factors-step.png"
+    },
+    {
+      "name": "Captured BP and lab values step",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/06-bp-labs-step.png"
+    },
+    {
+      "name": "Deterministic calculator completes high-risk demo case",
+      "status": "passed",
+      "observed": "urgent language present"
+    },
+    {
+      "name": "Captured deterministic results screen",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/07-results-summary.png"
+    },
+    {
+      "name": "AI explanation route returns a user-facing result",
+      "status": "passed",
+      "observed": "Lifestyle advice"
+    },
+    {
+      "name": "Captured AI explanation area",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/08-ai-explanation.png"
+    },
+    {
+      "name": "Captured Lab OCR screen before upload",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/09-lab-ocr-empty.png"
+    },
+    {
+      "name": "Lab OCR upload flow handles synthetic report",
+      "status": "passed",
+      "observed": "Values extracted",
+      "sample": "public/product-media/sample-lab-report.png"
+    },
+    {
+      "name": "Captured Lab OCR screen after AI extraction attempt",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/10-lab-ocr-after-upload.png"
+    },
+    {
+      "name": "Camera module opens without blocking calculator",
+      "status": "passed"
+    },
+    {
+      "name": "Captured Camera Health Assist screen",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/11-camera-assist.png"
+    },
+    {
+      "name": "Camera start action gives graceful success/fallback state",
+      "status": "passed",
+      "observed": "Stop camera"
+    },
+    {
+      "name": "Captured camera start/fallback state",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/12-camera-start-state.png"
+    },
+    {
+      "name": "Report tab keeps screening result and referral note available",
+      "status": "passed"
+    },
+    {
+      "name": "Captured report/referral screen",
+      "status": "passed",
+      "screenshot": "public/product-media/screenshots/13-report-download.png"
+    },
+    {
+      "name": "Language toggle remains visible after full flow",
+      "status": "passed"
+    },
+    {
+      "name": "PWA manifest is reachable",
+      "status": "passed",
+      "httpStatus": 200
+    },
+    {
+      "name": "Service worker is reachable",
+      "status": "fixed",
+      "httpStatus": 404,
+      "observed": "Production /service-worker.js was 404 during QA; this change adds a compatibility service-worker.js and registers it."
+    },
+    {
+      "name": "Generated demo video from captured product screens",
+      "status": "passed",
+      "video": "public/product-media/swasthyascore-demo.webm",
+      "size": 846837,
+      "mimeType": "video/webm;codecs=vp9"
+    },
+    {
+      "name": "Browser console has no blocking app errors during QA",
+      "status": "passed",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "Dashboard media showcase added from captured QA assets",
+      "status": "passed",
+      "video": "public/product-media/swasthyascore-demo.webm"
+    }
+  ]
+}

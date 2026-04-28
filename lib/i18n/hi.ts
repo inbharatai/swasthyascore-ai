@@ -345,6 +345,21 @@ export const hi = {
   "home.kpi.offline": "मैनुअल कैलकुलेटर ऑफलाइन चलता है",
   "home.modules": "मॉड्यूल",
   "home.modulesTitle": "आप क्या करना चाहते हैं?",
+  "media.kicker": "प्रोडक्ट वॉकथ्रू",
+  "media.title": "मोबाइल स्क्रीनिंग फ्लो देखें",
+  "media.description":
+    "डिप्लॉय किए गए PWA के QA स्क्रीनशॉट डैशबोर्ड, गाइडेड कैलकुलेटर, रिजल्ट, AI समझाइश, लैब OCR, कैमरा असिस्ट और रिपोर्ट फ्लो दिखाते हैं।",
+  "media.videoBadge": "डेमो वीडियो",
+  "media.videoFallback": "आपका ब्राउज़र एम्बेडेड वीडियो सपोर्ट नहीं करता।",
+  "media.screen.dashboard.title": "मोबाइल डैशबोर्ड",
+  "media.screen.dashboard.caption":
+    "पहली स्क्रीन काम करने वाला PWA डैशबोर्ड है, अलग लैंडिंग पेज नहीं।",
+  "media.screen.results.title": "साफ रिस्क सारांश",
+  "media.screen.results.caption":
+    "BMI, कमर, डायबिटीज स्कोर, BP, लैब फ्लैग, कारण और अगले कदम कोड से निकाले जाते हैं।",
+  "media.screen.ocr.title": "AI लैब OCR",
+  "media.screen.ocr.caption":
+    "रिपोर्ट इमेज AI से पढ़ी जा सकती है, फिर हर निकली हुई वैल्यू edit की जा सकती है।",
   "wizard.title": "रिस्क चेक",
   "wizard.subtitle":
     "पांच आसान स्टेप में शांत, तेज और समझाने लायक स्क्रीनिंग।",
