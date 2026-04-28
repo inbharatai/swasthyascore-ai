@@ -2,7 +2,7 @@
 
 SwasthyaScore AI is a mobile-first bilingual PWA for quick NCD screening in Bharat. It helps laypersons, NGOs, field workers, clinics, and community health workers screen obesity risk, diabetes risk, waist risk, and blood pressure risk in under a minute.
 
-This MVP is intentionally structured so manual screening works without login, without a database, and without OpenAI. AI is optional and only used when the user explicitly asks for lab OCR, visible-concern explanation, referral-note support, or patient-friendly explanation.
+This MVP is intentionally structured so manual screening works without a database and without OpenAI. It includes a local-device authentication gate for role-based access context, while patient and screening data remains local-first. AI is optional and only used when the user explicitly asks for lab OCR, visible-concern explanation, referral-note support, or patient-friendly explanation.
 
 ## Medical disclaimer
 
@@ -16,6 +16,7 @@ This MVP is intentionally structured so manual screening works without login, wi
 
 - Mobile-first Next.js App Router PWA with install prompt, manifest, icons, and offline shell
 - Direct-to-dashboard experience with no separate marketing landing page
+- Local-device authentication gate with role selection for patient, field worker, clinic admin, or doctor context
 - English and Hindi local translations
 - Deterministic calculators for BMI, Indian/Asian obesity risk, waist risk, IDRS-style diabetes risk, BP flags, lab interpretation, and overall triage
 - Optional AI lab OCR using the OpenAI Responses API
@@ -73,6 +74,15 @@ pnpm dev
 http://localhost:3000
 ```
 
+## Authentication and storage in v1
+
+- Authentication is local-device only in this MVP.
+- The local session stores display name, role, selected language, and timestamps in browser `localStorage`.
+- Screening form drafts are also stored in browser `localStorage`.
+- No Supabase database is required for v1.
+- Clearing browser data signs the user out and removes local drafts.
+- For production clinic workflows, replace the local auth service with Supabase Auth or Auth.js and add explicit consent, retention, audit, and row-level-security rules before storing patient records in the cloud.
+
 ## Scripts
 
 - `pnpm dev` starts local development
@@ -118,6 +128,7 @@ http://localhost:3000
 
 - Review [`lib/future/database.placeholder.ts`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/database.placeholder.ts)
 - Review [`lib/future/supabase.schema.sql`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/supabase.schema.sql)
+- Review [`lib/future/auth.placeholder.ts`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/auth.placeholder.ts)
 - Add Supabase client wiring in a new repository implementation
 - Replace the placeholder repository with a real persistence layer
 - Add auth flows around the existing placeholder session contract in [`lib/future/auth.placeholder.ts`](/C:/Users/reetu/Desktop/NCD%20calculator/lib/future/auth.placeholder.ts)

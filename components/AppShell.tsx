@@ -5,10 +5,17 @@ import type { Language } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import type { AppTab } from "@/lib/types/navigation";
 import { useClientReady } from "@/lib/utils/clientReady";
+import {
+  getServerLocalSession,
+  getStoredLocalSession,
+  subscribeToLocalSession,
+} from "@/lib/auth/localAuth";
+import { AuthGate } from "./AuthGate";
 import { LanguageToggle } from "./LanguageToggle";
 import { HomeDashboard } from "./HomeDashboard";
 import { BottomNav } from "./BottomNav";
 import { InstallPWAButton } from "./InstallPWAButton";
+import { UserProfileMenu } from "./UserProfileMenu";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -94,6 +101,11 @@ export function AppShell() {
     subscribeToOnlineStatus,
     getOnlineStatus,
     () => true,
+  );
+  const session = useSyncExternalStore(
+    subscribeToLocalSession,
+    getStoredLocalSession,
+    getServerLocalSession,
   );
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(
     null,
@@ -181,6 +193,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] pb-24 text-[var(--slate-900)]">
+      <AuthGate language={language} onLanguageChange={setLanguage}>
       <div className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div>
@@ -192,6 +205,9 @@ export function AppShell() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {session ? (
+              <UserProfileMenu language={language} session={session} />
+            ) : null}
             <InstallPWAButton
               language={language}
               installAvailable={Boolean(installEvent) && !installed}
@@ -246,6 +262,7 @@ export function AppShell() {
         activeTab={activeTab}
         onChange={handleTabChange}
       />
+      </AuthGate>
     </div>
   );
 }

@@ -469,4 +469,28 @@ export const hi = {
   "camera.recommendedAction": "सुझाया गया कदम",
   "camera.notDiagnosis":
     "यह केवल दिखने वाली चिंता की समझ है, निदान नहीं। चिंता हो तो डॉक्टर/हेल्थ वर्कर से दिखाएं।",
+  "role.patient": "मरीज",
+  "role.field_worker": "फील्ड वर्कर",
+  "role.clinic_admin": "क्लिनिक एडमिन",
+  "role.doctor": "डॉक्टर",
+  "auth.localMode": "लोकल डिवाइस ऑथेंटिकेशन",
+  "auth.screeningOnly": "केवल स्क्रीनिंग",
+  "auth.title": "SwasthyaScore AI शुरू करने के लिए लोकल साइन इन करें",
+  "auth.description":
+    "यह MVP पहले डिवाइस-लोकल ऑथ और लोकल स्टोरेज उपयोग करता है। आज मरीज रिकॉर्ड डेटाबेस में नहीं भेजे जाते, लेकिन आगे Supabase के लिए संरचना तैयार है।",
+  "auth.point.local": "इस डिवाइस पर लोकल सेशन",
+  "auth.point.noCloud": "v1 में डेटाबेस जरूरी नहीं",
+  "auth.point.roles": "रोल के अनुसार ऐप संदर्भ",
+  "auth.point.futureReady": "आगे Supabase Auth के लिए तैयार",
+  "auth.signInKicker": "एक्सेस",
+  "auth.signInTitle": "लोकल सेशन बनाएं",
+  "auth.signInDescription":
+    "इस डिवाइस के लिए नाम और रोल चुनें। यह क्लाउड अकाउंट नहीं है।",
+  "auth.nameLabel": "दिखने वाला नाम",
+  "auth.namePlaceholder": "जैसे: Reetu या Clinic worker",
+  "auth.roleLabel": "रोल",
+  "auth.privacyNote":
+    "आपका सेशन केवल इस ब्राउज़र के लोकल स्टोरेज में रहता है। ब्राउज़र डेटा साफ करने पर साइन आउट हो जाएगा।",
+  "auth.continue": "ऐप में जाएं",
+  "auth.signOut": "साइन आउट",
 } satisfies TranslationSchema;
