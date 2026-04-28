@@ -22,7 +22,7 @@
     "public/product-media/screenshots/12-camera-start-state.png",
     "public/product-media/screenshots/13-report-download.png"
   ],
-  "video": "public/product-media/swasthyascore-demo.webm",
+  "video": "public/product-media/swasthyascore-landing-video.mp4",
   "qa": [
     {
       "name": "Production app loads local auth screen",
@@ -144,9 +144,9 @@
     {
       "name": "Generated demo video from captured product screens",
       "status": "passed",
-      "video": "public/product-media/swasthyascore-demo.webm",
-      "size": 846837,
-      "mimeType": "video/webm;codecs=vp9"
+      "video": "public/product-media/swasthyascore-landing-video.mp4",
+      "size": 8322256,
+      "mimeType": "video/mp4"
     },
     {
       "name": "Browser console has no blocking app errors during QA",

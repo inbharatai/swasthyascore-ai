@@ -48,5 +48,5 @@ Viewport: 390x844 @ 2x
 - public/product-media/screenshots/12-camera-start-state.png
 - public/product-media/screenshots/13-report-download.png
 
-Demo video: public/product-media/swasthyascore-demo.webm
+Demo video: public/product-media/swasthyascore-landing-video.mp4
 Sample OCR report: public/product-media/sample-lab-report.png

@@ -172,9 +172,9 @@ function ProductMediaShowcase({ language }: { language: Language }) {
             muted
             playsInline
             preload="metadata"
-            poster="/product-media/swasthyascore-demo-poster.png"
+            poster="/product-media/swasthyascore-landing-video-poster.png"
           >
-            <source src="/product-media/swasthyascore-demo.webm" type="video/webm" />
+            <source src="/product-media/swasthyascore-landing-video.mp4" type="video/mp4" />
             {translate(language, "media.videoFallback")}
           </video>
         </div>
