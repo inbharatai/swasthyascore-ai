@@ -6,7 +6,6 @@ import {
   spring,
   staticFile,
   useCurrentFrame,
-  useVideoConfig,
 } from "remotion";
 
 type ScreenShot = {
@@ -15,69 +14,56 @@ type ScreenShot = {
   detail: string;
 };
 
-const screenshots: ScreenShot[] = [
+const screens: ScreenShot[] = [
   {
     src: "product-media/screenshots/02-home-dashboard.png",
-    title: "Mobile-first dashboard",
-    detail: "The product opens directly into the working screening app.",
+    title: "Mobile dashboard",
+    detail: "Open directly into the working screening app.",
   },
   {
     src: "product-media/screenshots/04-risk-measurements-step.png",
-    title: "Guided risk check",
-    detail: "One calm task at a time for field workers and families.",
-  },
-  {
-    src: "product-media/screenshots/07-results-summary.png",
-    title: "Code-based results",
-    detail: "BMI, waist, diabetes score, BP and labs stay deterministic.",
-  },
-  {
-    src: "product-media/screenshots/10-lab-ocr-after-upload.png",
-    title: "AI lab OCR",
-    detail: "Visible values can be extracted, then manually verified.",
+    title: "Guided check",
+    detail: "Height, weight and waist stay manual-first.",
   },
   {
     src: "product-media/screenshots/11-camera-assist.png",
-    title: "Camera Health Assist",
-    detail: "Safe visual guidance, never image-based diagnosis.",
+    title: "Camera assist",
+    detail: "Visual guidance only, never diagnosis.",
+  },
+  {
+    src: "product-media/screenshots/07-results-summary.png",
+    title: "Clear result",
+    detail: "Code-based BMI, BP, lab and diabetes-risk logic.",
+  },
+  {
+    src: "product-media/screenshots/10-lab-ocr-after-upload.png",
+    title: "AI support",
+    detail: "OCR and explanations remain optional.",
   },
 ];
 
-const featureCards = [
-  "Obesity risk",
-  "Diabetes score",
-  "BP flag",
-  "Lab OCR",
-  "Referral note",
-  "Offline shell",
+const features = [
+  "60-second risk check",
+  "English / Hindi",
+  "Offline manual calculator",
+  "Doctor-ready report",
 ];
 
-const riskCards = [
-  ["BMI", "Asian/Indian public-health cutoffs"],
-  ["Waist", "Male >90 cm, Female >80 cm risk flag"],
-  ["IDRS-style score", "Age, waist, activity, family history"],
-  ["BP", "Urgent warning for very high readings"],
+const safetyCards = [
+  ["Code calculates", "BMI, waist, BP, labs and diabetes score"],
+  ["AI assists", "OCR, explanation and referral notes"],
+  ["Safety first", "Screening only. Doctor confirmation required."],
 ];
 
-const aiCards = [
-  ["AI reads", "Lab report image OCR"],
-  ["AI explains", "Simple English/Hindi summaries"],
-  ["AI formats", "Doctor-ready referral notes"],
-];
-
-function clampProgress(frame: number, start: number, duration: number) {
-  return Math.max(0, Math.min(1, (frame - start) / duration));
-}
-
-function fade(frame: number, start: number, end: number) {
-  return interpolate(frame, [start, start + 24, end - 24, end], [0, 1, 1, 0], {
+function sceneOpacity(frame: number, start: number, end: number) {
+  return interpolate(frame, [start, start + 20, end - 20, end], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 }
 
-function rise(frame: number, start: number) {
-  return interpolate(frame, [start, start + 36], [42, 0], {
+function rise(frame: number, start: number, distance = 46) {
+  return interpolate(frame, [start, start + 34], [distance, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
@@ -89,42 +75,31 @@ function Background() {
     <AbsoluteFill
       style={{
         background:
-          "radial-gradient(circle at 12% 18%, rgba(45,212,191,0.34), transparent 30%), radial-gradient(circle at 85% 8%, rgba(56,189,248,0.28), transparent 32%), linear-gradient(135deg, #ecfeff 0%, #f8fafc 47%, #dbeafe 100%)",
+          "radial-gradient(circle at 18% 8%, rgba(45,212,191,0.34), transparent 28%), radial-gradient(circle at 80% 18%, rgba(56,189,248,0.26), transparent 30%), linear-gradient(180deg, #f0fdfa 0%, #eff6ff 52%, #f8fafc 100%)",
         overflow: "hidden",
       }}
     >
       <div
         style={{
           position: "absolute",
-          width: 760,
-          height: 760,
+          width: 720,
+          height: 720,
           borderRadius: "50%",
-          left: -260,
-          bottom: -300,
-          background: "rgba(15,118,110,0.16)",
-          filter: "blur(18px)",
+          left: -290,
+          top: 300,
+          background: "rgba(15,118,110,0.18)",
+          filter: "blur(20px)",
         }}
       />
       <div
         style={{
           position: "absolute",
-          width: 520,
-          height: 520,
+          width: 820,
+          height: 820,
           borderRadius: "50%",
-          right: -120,
-          top: 160,
-          border: "2px solid rgba(15,118,110,0.16)",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          width: 980,
-          height: 980,
-          borderRadius: "50%",
-          right: -320,
-          bottom: -520,
-          background: "rgba(2,132,199,0.18)",
+          right: -360,
+          bottom: -240,
+          background: "rgba(3,105,161,0.18)",
           filter: "blur(22px)",
         }}
       />
@@ -132,42 +107,42 @@ function Background() {
   );
 }
 
-function Wordmark() {
+function BrandHeader() {
   return (
     <div
       style={{
         position: "absolute",
-        top: 60,
-        left: 72,
+        top: 72,
+        left: 64,
+        right: 64,
         display: "flex",
         alignItems: "center",
-        gap: 18,
-        color: "#042f2e",
+        gap: 20,
         zIndex: 20,
       }}
     >
       <div
         style={{
-          width: 58,
-          height: 58,
-          borderRadius: 18,
+          width: 70,
+          height: 70,
+          borderRadius: 22,
           background: "linear-gradient(135deg, #0f766e, #0369a1)",
-          boxShadow: "0 18px 40px rgba(15,118,110,0.28)",
+          boxShadow: "0 18px 46px rgba(15,118,110,0.26)",
         }}
       />
       <div>
         <div
           style={{
-            fontSize: 32,
-            letterSpacing: 8,
-            fontWeight: 900,
-            textTransform: "uppercase",
+            fontSize: 34,
+            fontWeight: 950,
+            letterSpacing: 2,
+            color: "#042f2e",
           }}
         >
           SwasthyaScore AI
         </div>
-        <div style={{ marginTop: 6, color: "#475569", fontSize: 20, fontWeight: 700 }}>
-          Screening only. Not a medical diagnosis.
+        <div style={{ marginTop: 6, fontSize: 22, fontWeight: 800, color: "#64748b" }}>
+          Screening only. Not a diagnosis.
         </div>
       </div>
     </div>
@@ -176,30 +151,35 @@ function Wordmark() {
 
 function PhoneMockup({
   screen,
-  frameOffset = 0,
+  delay = 0,
   scale = 1,
+  rotate = 0,
 }: {
   screen: ScreenShot;
-  frameOffset?: number;
+  delay?: number;
   scale?: number;
+  rotate?: number;
 }) {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const entrance = spring({ frame: frame - frameOffset, fps, config: { damping: 18 } });
+  const entrance = spring({
+    frame: frame - delay,
+    fps: 30,
+    config: { damping: 17, mass: 0.9 },
+  });
 
   return (
     <div
       style={{
-        width: 404 * scale,
-        height: 808 * scale,
-        borderRadius: 62 * scale,
-        padding: 16 * scale,
+        width: 492 * scale,
+        height: 984 * scale,
+        borderRadius: 76 * scale,
+        padding: 18 * scale,
         background: "linear-gradient(160deg, #0f172a, #164e63)",
-        boxShadow: "0 36px 90px rgba(15,23,42,0.34)",
-        transform: `translateY(${(1 - entrance) * 70}px) rotate(${interpolate(
+        boxShadow: "0 40px 110px rgba(15,23,42,0.32)",
+        transform: `translateY(${(1 - entrance) * 90}px) rotate(${interpolate(
           entrance,
           [0, 1],
-          [-4, 0],
+          [rotate - 5, rotate],
         )}deg)`,
         opacity: entrance,
       }}
@@ -209,7 +189,7 @@ function PhoneMockup({
           position: "relative",
           width: "100%",
           height: "100%",
-          borderRadius: 46 * scale,
+          borderRadius: 56 * scale,
           overflow: "hidden",
           background: "#e2e8f0",
           border: `${2 * scale}px solid rgba(255,255,255,0.18)`,
@@ -227,18 +207,17 @@ function PhoneMockup({
         <div
           style={{
             position: "absolute",
-            left: 42 * scale,
-            right: 42 * scale,
+            left: 28 * scale,
+            right: 28 * scale,
             bottom: 28 * scale,
-            borderRadius: 24 * scale,
-            padding: `${16 * scale}px ${18 * scale}px`,
-            background: "rgba(4,47,46,0.88)",
+            borderRadius: 30 * scale,
+            padding: `${18 * scale}px ${20 * scale}px`,
+            background: "rgba(4,47,46,0.9)",
             color: "white",
-            backdropFilter: "blur(12px)",
           }}
         >
-          <div style={{ fontSize: 22 * scale, fontWeight: 900 }}>{screen.title}</div>
-          <div style={{ marginTop: 6 * scale, fontSize: 14 * scale, lineHeight: 1.35 }}>
+          <div style={{ fontSize: 24 * scale, fontWeight: 950 }}>{screen.title}</div>
+          <div style={{ marginTop: 8 * scale, fontSize: 15 * scale, lineHeight: 1.35 }}>
             {screen.detail}
           </div>
         </div>
@@ -247,26 +226,23 @@ function PhoneMockup({
   );
 }
 
-function Pill({ children, delay = 0 }: { children: string; delay?: number }) {
+function Badge({ children, delay }: { children: string; delay: number }) {
   const frame = useCurrentFrame();
-  const progress = spring({
-    frame: frame - delay,
-    fps: 30,
-    config: { damping: 16, mass: 0.8 },
-  });
+  const progress = spring({ frame: frame - delay, fps: 30, config: { damping: 16 } });
 
   return (
     <div
       style={{
-        padding: "18px 24px",
+        display: "inline-flex",
         borderRadius: 999,
-        background: "rgba(255,255,255,0.82)",
+        padding: "18px 24px",
+        background: "rgba(255,255,255,0.88)",
         color: "#0f766e",
-        fontWeight: 900,
         fontSize: 24,
+        fontWeight: 950,
         boxShadow: "0 16px 42px rgba(15,23,42,0.08)",
-        transform: `translateY(${(1 - progress) * 34}px)`,
         opacity: progress,
+        transform: `translateY(${(1 - progress) * 28}px)`,
       }}
     >
       {children}
@@ -276,16 +252,17 @@ function Pill({ children, delay = 0 }: { children: string; delay?: number }) {
 
 function HeroScene() {
   const frame = useCurrentFrame();
-  const opacity = fade(frame, 0, 220);
+  const opacity = sceneOpacity(frame, 0, 165);
+
   return (
     <AbsoluteFill style={{ opacity }}>
       <div
         style={{
           position: "absolute",
-          left: 92,
-          top: 205,
-          width: 820,
-          transform: `translateY(${rise(frame, 12)}px)`,
+          top: 215,
+          left: 64,
+          right: 64,
+          transform: `translateY(${rise(frame, 8)}px)`,
         }}
       >
         <div
@@ -293,10 +270,10 @@ function HeroScene() {
             display: "inline-flex",
             padding: "12px 20px",
             borderRadius: 999,
-            background: "rgba(15,118,110,0.1)",
+            background: "rgba(15,118,110,0.11)",
             color: "#0f766e",
-            fontSize: 24,
-            fontWeight: 900,
+            fontSize: 22,
+            fontWeight: 950,
             letterSpacing: 3,
             textTransform: "uppercase",
           }}
@@ -305,38 +282,48 @@ function HeroScene() {
         </div>
         <h1
           style={{
-            margin: "34px 0 0",
-            fontSize: 88,
-            lineHeight: 0.96,
-            letterSpacing: -4,
+            margin: "28px 0 0",
+            fontSize: 78,
+            lineHeight: 0.94,
+            letterSpacing: -3,
             color: "#082f49",
           }}
         >
-          60-second NCD screening in a mobile PWA
+          NCD risk screening that feels like a mobile app
         </h1>
         <p
           style={{
-            marginTop: 32,
-            width: 720,
-            fontSize: 32,
-            lineHeight: 1.35,
+            marginTop: 26,
+            fontSize: 30,
+            lineHeight: 1.32,
             color: "#475569",
-            fontWeight: 700,
+            fontWeight: 760,
           }}
         >
-          Obesity, diabetes, blood pressure and lab-risk guidance for field workers,
-          clinics, NGOs and families.
+          Obesity, diabetes, BP and lab-risk guidance in a calm guided flow.
         </p>
-        <div style={{ marginTop: 42, display: "flex", gap: 16, flexWrap: "wrap" }}>
-          {featureCards.map((feature, index) => (
-            <Pill key={feature} delay={36 + index * 7}>
-              {feature}
-            </Pill>
-          ))}
-        </div>
       </div>
-      <div style={{ position: "absolute", right: 190, top: 150 }}>
-        <PhoneMockup screen={screenshots[0]} frameOffset={28} />
+
+      <div style={{ position: "absolute", left: 294, top: 675 }}>
+        <PhoneMockup screen={screens[0]} delay={26} scale={0.98} />
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 64,
+          right: 64,
+          bottom: 96,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 16,
+        }}
+      >
+        {features.map((feature, index) => (
+          <Badge key={feature} delay={58 + index * 8}>
+            {feature}
+          </Badge>
+        ))}
       </div>
     </AbsoluteFill>
   );
@@ -344,191 +331,184 @@ function HeroScene() {
 
 function FlowScene() {
   const frame = useCurrentFrame();
-  const opacity = fade(frame, 190, 430);
-  const local = frame - 190;
-  const activeIndex = Math.min(2, Math.floor(Math.max(0, local) / 70));
+  const opacity = sceneOpacity(frame, 145, 315);
+  const active = Math.min(2, Math.floor(Math.max(0, frame - 155) / 48));
 
   return (
     <AbsoluteFill style={{ opacity }}>
-      <div style={{ position: "absolute", left: 120, top: 185 }}>
-        <PhoneMockup screen={screenshots[1 + activeIndex]} frameOffset={210} scale={0.93} />
-      </div>
-      <div style={{ position: "absolute", right: 110, top: 220, width: 870 }}>
+      <div style={{ position: "absolute", left: 104, top: 246 }}>
         <h2
           style={{
-            fontSize: 74,
-            lineHeight: 1.02,
-            letterSpacing: -3,
-            color: "#042f2e",
             margin: 0,
-            transform: `translateY(${rise(frame, 205)}px)`,
+            fontSize: 68,
+            lineHeight: 0.98,
+            letterSpacing: -2.5,
+            color: "#042f2e",
           }}
         >
-          A calm guided flow, not a long medical form
+          One task at a time.
         </h2>
-        <div style={{ marginTop: 54, display: "grid", gap: 22 }}>
-          {[
-            ["1", "Basic details", "Age, gender and optional name."],
-            ["2", "Measurements", "Manual height, weight and waist stay the source of truth."],
-            ["3", "Risk factors", "Activity, family history, symptoms and notes."],
-            ["4", "BP and labs", "Optional values with safe interpretation."],
-            ["5", "Results", "Clear next steps and referral note."],
-          ].map((item, index) => {
-            const itemProgress = spring({
-              frame: frame - (230 + index * 10),
+        <p
+          style={{
+            marginTop: 22,
+            width: 820,
+            fontSize: 28,
+            lineHeight: 1.32,
+            fontWeight: 760,
+            color: "#64748b",
+          }}
+        >
+          The form becomes a focused mobile wizard for field workers and families.
+        </p>
+      </div>
+      <div style={{ position: "absolute", left: 314, top: 545 }}>
+        <PhoneMockup screen={screens[1 + active]} delay={170} scale={0.92} />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 64,
+          right: 64,
+          bottom: 100,
+          display: "grid",
+          gap: 16,
+        }}
+      >
+        {["Basic details", "Measurements", "Risk factors", "BP and labs", "Results"].map(
+          (step, index) => {
+            const selected = index === active + 1;
+            const progress = spring({
+              frame: frame - (180 + index * 7),
               fps: 30,
-              config: { damping: 17 },
+              config: { damping: 16 },
             });
             return (
               <div
-                key={item[0]}
+                key={step}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "72px 1fr",
-                  gap: 20,
+                  gridTemplateColumns: "58px 1fr",
+                  gap: 18,
                   alignItems: "center",
-                  padding: 22,
-                  borderRadius: 30,
-                  background:
-                    index === activeIndex + 1
-                      ? "linear-gradient(135deg, rgba(15,118,110,0.96), rgba(3,105,161,0.92))"
-                      : "rgba(255,255,255,0.82)",
-                  boxShadow: "0 18px 50px rgba(15,23,42,0.08)",
-                  transform: `translateX(${(1 - itemProgress) * 45}px)`,
-                  opacity: itemProgress,
+                  padding: "18px 22px",
+                  borderRadius: 28,
+                  background: selected
+                    ? "linear-gradient(135deg, #0f766e, #0369a1)"
+                    : "rgba(255,255,255,0.88)",
+                  boxShadow: "0 14px 38px rgba(15,23,42,0.08)",
+                  opacity: progress,
+                  transform: `translateY(${(1 - progress) * 24}px)`,
                 }}
               >
                 <div
                   style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 20,
+                    width: 50,
+                    height: 50,
+                    borderRadius: 18,
                     display: "grid",
                     placeItems: "center",
-                    background: index === activeIndex + 1 ? "rgba(255,255,255,0.16)" : "#ecfeff",
-                    color: index === activeIndex + 1 ? "white" : "#0f766e",
-                    fontSize: 28,
-                    fontWeight: 900,
+                    background: selected ? "rgba(255,255,255,0.18)" : "#ecfeff",
+                    color: selected ? "white" : "#0f766e",
+                    fontSize: 24,
+                    fontWeight: 950,
                   }}
                 >
-                  {item[0]}
+                  {index + 1}
                 </div>
-                <div style={{ color: index === activeIndex + 1 ? "white" : "#0f172a" }}>
-                  <div style={{ fontSize: 30, fontWeight: 900 }}>{item[1]}</div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 21,
-                      color: index === activeIndex + 1 ? "rgba(255,255,255,0.78)" : "#64748b",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {item[2]}
-                  </div>
+                <div
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 950,
+                    color: selected ? "white" : "#0f172a",
+                  }}
+                >
+                  {step}
                 </div>
               </div>
             );
-          })}
-        </div>
+          },
+        )}
       </div>
     </AbsoluteFill>
   );
 }
 
-function DeterministicScene() {
+function SafetyScene() {
   const frame = useCurrentFrame();
-  const opacity = fade(frame, 400, 650);
-  const sweep = clampProgress(frame, 430, 160);
+  const opacity = sceneOpacity(frame, 295, 465);
 
   return (
     <AbsoluteFill style={{ opacity }}>
-      <div
-        style={{
-          position: "absolute",
-          left: 120,
-          top: 205,
-          width: 720,
-          transform: `translateY(${rise(frame, 412)}px)`,
-        }}
-      >
+      <div style={{ position: "absolute", left: 64, right: 64, top: 230 }}>
         <div
           style={{
             color: "#0f766e",
-            fontSize: 26,
-            fontWeight: 900,
+            fontSize: 24,
+            fontWeight: 950,
             letterSpacing: 4,
             textTransform: "uppercase",
           }}
         >
-          Safety architecture
+          Safe by design
         </div>
         <h2
           style={{
             margin: "26px 0 0",
-            color: "#082f49",
-            fontSize: 80,
+            fontSize: 76,
             lineHeight: 0.98,
             letterSpacing: -3,
+            color: "#082f49",
           }}
         >
-          AI assists. Code calculates.
+          Camera and AI assist. They never diagnose.
         </h2>
-        <p
-          style={{
-            marginTop: 30,
-            color: "#475569",
-            fontSize: 32,
-            lineHeight: 1.35,
-            fontWeight: 700,
-          }}
-        >
-          Deterministic TypeScript rules remain the source of truth for core screening.
-        </p>
+      </div>
+      <div style={{ position: "absolute", left: 82, top: 610 }}>
+        <PhoneMockup screen={screens[2]} delay={326} scale={0.78} rotate={-2} />
+      </div>
+      <div style={{ position: "absolute", right: 82, top: 660 }}>
+        <PhoneMockup screen={screens[3]} delay={350} scale={0.72} rotate={3} />
       </div>
       <div
         style={{
           position: "absolute",
-          right: 110,
-          top: 188,
-          width: 800,
+          left: 64,
+          right: 64,
+          bottom: 110,
           display: "grid",
-          gap: 24,
+          gap: 18,
         }}
       >
-        {riskCards.map(([title, detail], index) => {
+        {safetyCards.map(([title, detail], index) => {
           const progress = spring({
-            frame: frame - (450 + index * 12),
+            frame: frame - (365 + index * 12),
             fps: 30,
-            config: { damping: 18 },
+            config: { damping: 16 },
           });
           return (
             <div
               key={title}
               style={{
-                position: "relative",
-                overflow: "hidden",
-                padding: 34,
+                padding: 28,
                 borderRadius: 34,
-                background: "rgba(255,255,255,0.9)",
-                border: "1px solid rgba(15,118,110,0.13)",
-                boxShadow: "0 20px 50px rgba(15,23,42,0.08)",
-                transform: `translateX(${(1 - progress) * 52}px)`,
+                background: index === 1 ? "rgba(15,118,110,0.94)" : "rgba(255,255,255,0.9)",
+                color: index === 1 ? "white" : "#0f172a",
+                boxShadow: "0 18px 46px rgba(15,23,42,0.09)",
                 opacity: progress,
+                transform: `translateX(${(1 - progress) * 42}px)`,
               }}
             >
+              <div style={{ fontSize: 32, fontWeight: 950 }}>{title}</div>
               <div
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: `${Math.max(8, sweep * 100)}%`,
-                  background: "linear-gradient(90deg, rgba(45,212,191,0.20), transparent)",
+                  marginTop: 10,
+                  fontSize: 22,
+                  lineHeight: 1.34,
+                  fontWeight: 760,
+                  color: index === 1 ? "rgba(255,255,255,0.82)" : "#64748b",
                 }}
-              />
-              <div style={{ position: "relative" }}>
-                <div style={{ fontSize: 38, color: "#0f172a", fontWeight: 950 }}>{title}</div>
-                <div style={{ marginTop: 10, fontSize: 24, color: "#64748b", fontWeight: 700 }}>
-                  {detail}
-                </div>
+              >
+                {detail}
               </div>
             </div>
           );
@@ -540,167 +520,53 @@ function DeterministicScene() {
 
 function AiScene() {
   const frame = useCurrentFrame();
-  const opacity = fade(frame, 620, 850);
+  const opacity = sceneOpacity(frame, 445, 610);
 
   return (
     <AbsoluteFill style={{ opacity }}>
-      <div style={{ position: "absolute", left: 125, top: 155 }}>
-        <PhoneMockup screen={screenshots[3]} frameOffset={642} scale={0.82} />
-      </div>
-      <div style={{ position: "absolute", left: 430, top: 230 }}>
-        <PhoneMockup screen={screenshots[4]} frameOffset={680} scale={0.66} />
-      </div>
-      <div style={{ position: "absolute", right: 105, top: 190, width: 830 }}>
+      <div style={{ position: "absolute", left: 64, right: 64, top: 225 }}>
         <h2
           style={{
             margin: 0,
+            fontSize: 76,
+            lineHeight: 0.98,
+            letterSpacing: -3,
             color: "#042f2e",
-            fontSize: 78,
-            lineHeight: 0.98,
-            letterSpacing: -3,
           }}
         >
-          Premium AI features with clear boundaries
-        </h2>
-        <div style={{ marginTop: 54, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
-          {aiCards.map(([title, detail], index) => {
-            const progress = spring({
-              frame: frame - (675 + index * 18),
-              fps: 30,
-              config: { damping: 16 },
-            });
-            return (
-              <div
-                key={title}
-                style={{
-                  minHeight: 230,
-                  padding: 28,
-                  borderRadius: 34,
-                  background:
-                    index === 1
-                      ? "linear-gradient(135deg, #0f766e, #0369a1)"
-                      : "rgba(255,255,255,0.88)",
-                  color: index === 1 ? "white" : "#0f172a",
-                  boxShadow: "0 26px 60px rgba(15,23,42,0.10)",
-                  transform: `translateY(${(1 - progress) * 46}px)`,
-                  opacity: progress,
-                }}
-              >
-                <div style={{ fontSize: 34, fontWeight: 950 }}>{title}</div>
-                <div
-                  style={{
-                    marginTop: 16,
-                    fontSize: 22,
-                    lineHeight: 1.35,
-                    color: index === 1 ? "rgba(255,255,255,0.84)" : "#64748b",
-                    fontWeight: 750,
-                  }}
-                >
-                  {detail}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div
-          style={{
-            marginTop: 28,
-            padding: "24px 28px",
-            borderRadius: 30,
-            background: "rgba(255,247,237,0.92)",
-            color: "#9a3412",
-            fontSize: 26,
-            lineHeight: 1.35,
-            fontWeight: 900,
-          }}
-        >
-          Never diagnoses. Never prescribes. Always recommends qualified medical confirmation.
-        </div>
-      </div>
-    </AbsoluteFill>
-  );
-}
-
-function BharatScene() {
-  const frame = useCurrentFrame();
-  const opacity = fade(frame, 820, 1020);
-
-  return (
-    <AbsoluteFill style={{ opacity }}>
-      <div style={{ position: "absolute", left: 112, top: 190, width: 790 }}>
-        <h2
-          style={{
-            margin: 0,
-            color: "#082f49",
-            fontSize: 86,
-            lineHeight: 0.98,
-            letterSpacing: -3,
-          }}
-        >
-          Designed for real-world screening camps
+          AI features stay optional and controlled.
         </h2>
         <p
           style={{
-            marginTop: 32,
-            color: "#475569",
-            fontSize: 32,
+            marginTop: 28,
+            fontSize: 29,
             lineHeight: 1.35,
-            fontWeight: 760,
+            fontWeight: 780,
+            color: "#64748b",
           }}
         >
-          Works as an installable PWA, supports English and Hindi, keeps data local
-          unless an AI feature is intentionally used.
+          Lab OCR, simple explanations and referral notes run only when the user chooses.
         </p>
-        <div style={{ marginTop: 46, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
-          {[
-            ["Installable PWA", "Android, iPhone and desktop browser-ready"],
-            ["Offline manual checks", "Calculator flow remains available after caching"],
-            ["Bilingual interface", "English / हिंदी for field use"],
-            ["Local-first data", "No database required for screening"],
-          ].map(([title, detail], index) => (
-            <div
-              key={title}
-              style={{
-                padding: 28,
-                borderRadius: 32,
-                background: "rgba(255,255,255,0.88)",
-                boxShadow: "0 20px 54px rgba(15,23,42,0.08)",
-                transform: `translateY(${rise(frame, 850 + index * 8)}px)`,
-              }}
-            >
-              <div style={{ color: "#0f766e", fontSize: 29, fontWeight: 950 }}>{title}</div>
-              <div style={{ marginTop: 10, color: "#64748b", fontSize: 21, fontWeight: 750 }}>
-                {detail}
-              </div>
-            </div>
-          ))}
-        </div>
+      </div>
+      <div style={{ position: "absolute", left: 294, top: 620 }}>
+        <PhoneMockup screen={screens[4]} delay={476} scale={0.98} />
       </div>
       <div
         style={{
           position: "absolute",
-          right: 112,
-          top: 188,
-          width: 700,
-          height: 700,
-          borderRadius: 80,
-          background: "linear-gradient(135deg, rgba(15,118,110,0.96), rgba(3,105,161,0.96))",
-          boxShadow: "0 36px 90px rgba(15,23,42,0.20)",
+          left: 64,
+          right: 64,
+          bottom: 110,
+          padding: 34,
+          borderRadius: 38,
+          background: "linear-gradient(135deg, rgba(15,118,110,0.96), rgba(3,105,161,0.94))",
           color: "white",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: 72,
+          boxShadow: "0 28px 70px rgba(15,23,42,0.16)",
         }}
       >
-        <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 5, textTransform: "uppercase" }}>
-          SwasthyaScore AI
-        </div>
-        <div style={{ marginTop: 32, fontSize: 66, lineHeight: 1.05, fontWeight: 950 }}>
-          Screening made simple, safe and explainable.
-        </div>
-        <div style={{ marginTop: 38, fontSize: 30, lineHeight: 1.4, color: "rgba(255,255,255,0.82)", fontWeight: 760 }}>
-          For public-health awareness, referral support and better conversations with doctors.
+        <div style={{ fontSize: 36, fontWeight: 950 }}>Privacy-first flow</div>
+        <div style={{ marginTop: 12, fontSize: 24, lineHeight: 1.35, fontWeight: 760 }}>
+          Images are not stored by default. Manual screening works offline.
         </div>
       </div>
     </AbsoluteFill>
@@ -709,57 +575,51 @@ function BharatScene() {
 
 function FinalScene() {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [990, 1030], [0, 1], {
+  const opacity = interpolate(frame, [590, 630], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   return (
     <AbsoluteFill style={{ opacity, display: "grid", placeItems: "center", textAlign: "center" }}>
-      <div>
+      <div style={{ padding: "0 70px" }}>
         <div
           style={{
             margin: "0 auto",
-            width: 116,
-            height: 116,
-            borderRadius: 34,
+            width: 132,
+            height: 132,
+            borderRadius: 38,
             background: "linear-gradient(135deg, #0f766e, #0369a1)",
-            boxShadow: "0 22px 60px rgba(15,118,110,0.30)",
+            boxShadow: "0 24px 70px rgba(15,118,110,0.30)",
           }}
         />
         <h2
           style={{
-            margin: "38px 0 0",
-            fontSize: 92,
+            margin: "44px 0 0",
+            fontSize: 86,
+            lineHeight: 0.98,
             letterSpacing: -4,
             color: "#042f2e",
           }}
         >
           SwasthyaScore AI
         </h2>
-        <p style={{ marginTop: 20, fontSize: 36, color: "#475569", fontWeight: 800 }}>
+        <p style={{ marginTop: 24, fontSize: 34, lineHeight: 1.28, color: "#475569", fontWeight: 850 }}>
           AI-powered NCD risk screening for Bharat
         </p>
         <div
           style={{
-            margin: "48px auto 0",
-            display: "inline-flex",
-            gap: 18,
-            alignItems: "center",
-            padding: "20px 32px",
+            marginTop: 48,
             borderRadius: 999,
+            padding: "22px 30px",
             background: "rgba(255,255,255,0.9)",
             color: "#0f766e",
             fontSize: 24,
             fontWeight: 950,
-            boxShadow: "0 20px 50px rgba(15,23,42,0.08)",
+            boxShadow: "0 18px 50px rgba(15,23,42,0.08)",
           }}
         >
-          Screening only
-          <span style={{ color: "#cbd5e1" }}>|</span>
-          Not a diagnosis
-          <span style={{ color: "#cbd5e1" }}>|</span>
-          Doctor confirmation required
+          Screening only | Not a diagnosis | Doctor confirmation required
         </div>
       </div>
     </AbsoluteFill>
@@ -770,12 +630,11 @@ export function SwasthyaScoreLandingVideo() {
   return (
     <AbsoluteFill style={{ fontFamily: "Inter, Manrope, Arial, sans-serif" }}>
       <Background />
-      <Wordmark />
+      <BrandHeader />
       <HeroScene />
       <FlowScene />
-      <DeterministicScene />
+      <SafetyScene />
       <AiScene />
-      <BharatScene />
       <FinalScene />
     </AbsoluteFill>
   );

@@ -165,9 +165,9 @@ function ProductMediaShowcase({ language }: { language: Language }) {
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[30px] bg-[linear-gradient(135deg,#ecfeff,#eff6ff)] p-3 shadow-inner">
+        <div className="mx-auto w-full max-w-[390px] rounded-[30px] bg-[linear-gradient(135deg,#ecfeff,#eff6ff)] p-3 shadow-inner lg:max-w-none">
           <video
-            className="aspect-[9/16] max-h-[620px] w-full rounded-[24px] bg-slate-950 object-cover shadow-[0_24px_70px_rgba(15,23,42,0.18)] sm:aspect-video"
+            className="aspect-[9/16] max-h-[720px] w-full rounded-[24px] bg-slate-950 object-contain shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
             controls
             muted
             playsInline
