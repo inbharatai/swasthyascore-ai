@@ -21,6 +21,8 @@ export interface CreateLocalSessionInput {
 
 const localAuthStorageKey = "swasthya-score-local-auth-session";
 const localAuthChangeEvent = "swasthya-score-local-auth-change";
+let cachedSessionRaw: string | null | undefined;
+let cachedSession: LocalAuthSession | null = null;
 
 function dispatchAuthChange() {
   window.dispatchEvent(new Event(localAuthChangeEvent));
@@ -32,14 +34,24 @@ export function getStoredLocalSession(): LocalAuthSession | null {
   }
 
   const stored = window.localStorage.getItem(localAuthStorageKey);
+  if (stored === cachedSessionRaw) {
+    return cachedSession;
+  }
+
+  cachedSessionRaw = stored;
+
   if (!stored) {
+    cachedSession = null;
     return null;
   }
 
   try {
-    return JSON.parse(stored) as LocalAuthSession;
+    cachedSession = JSON.parse(stored) as LocalAuthSession;
+    return cachedSession;
   } catch {
     window.localStorage.removeItem(localAuthStorageKey);
+    cachedSessionRaw = null;
+    cachedSession = null;
     return null;
   }
 }
@@ -83,17 +95,21 @@ export function createLocalSession(
 }
 
 export function saveLocalSession(session: LocalAuthSession) {
-  window.localStorage.setItem(
-    localAuthStorageKey,
-    JSON.stringify({
-      ...session,
-      lastActiveIso: new Date().toISOString(),
-    }),
-  );
+  const nextSession = {
+    ...session,
+    lastActiveIso: new Date().toISOString(),
+  };
+  const serialized = JSON.stringify(nextSession);
+
+  cachedSessionRaw = serialized;
+  cachedSession = nextSession;
+  window.localStorage.setItem(localAuthStorageKey, serialized);
   dispatchAuthChange();
 }
 
 export function clearLocalSession() {
+  cachedSessionRaw = null;
+  cachedSession = null;
   window.localStorage.removeItem(localAuthStorageKey);
   dispatchAuthChange();
 }
