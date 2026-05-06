@@ -119,6 +119,13 @@ export interface BpRiskResult {
   incompleteReading: boolean;
 }
 
+export interface WaistHeightRatioResult {
+  ratio: number | null;
+  riskLevel: "healthy" | "increased" | "high" | "underweight_risk" | "unknown";
+  riskKey: TranslationKey;
+  labelKey: TranslationKey;
+}
+
 export interface OverallRiskResult {
   riskLevel: RiskLevel;
   riskKey: TranslationKey;
@@ -132,6 +139,7 @@ export interface OverallRiskResult {
 export interface ScreeningResult {
   bmi: BMIResult;
   waistRisk: WaistRiskResult;
+  waistHeightRatio: WaistHeightRatioResult;
   diabetesRisk: DiabetesRiskResult;
   bpRisk: BpRiskResult;
   labInterpretation: LabInterpretationResult;

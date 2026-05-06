@@ -20,6 +20,14 @@ type PoseLandmarkerInstance = {
 
 let poseLandmarkerPromise: Promise<PoseLandmarkerInstance> | null = null;
 
+function isVideoFrameReady(videoElement: HTMLVideoElement): boolean {
+  return (
+    videoElement.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    videoElement.videoWidth > 0 &&
+    videoElement.videoHeight > 0
+  );
+}
+
 function averageVisibility(landmarks: PoseLandmarkPoint[]) {
   const values = landmarks
     .map((landmark) => landmark.visibility)
@@ -88,6 +96,15 @@ export async function createPoseLandmarker() {
 export async function analyzeVideoPose(
   videoElement: HTMLVideoElement,
 ): Promise<PoseAnalysisResult> {
+  if (!isVideoFrameReady(videoElement)) {
+    return {
+      landmarks: [],
+      fullBodyVisible: false,
+      confidence: "low",
+      warnings: ["No camera frame yet. Ensure camera is enabled and visible."],
+    };
+  }
+
   const poseLandmarker = await createPoseLandmarker();
   const result = poseLandmarker.detectForVideo(videoElement, performance.now());
   const landmarks = result.landmarks?.[0] ?? [];
@@ -155,4 +172,73 @@ export function estimateBodyPixelHeight(
   const minY = Math.min(...visibleY);
   const maxY = Math.max(...visibleY);
   return Math.max(0, (maxY - minY) * videoHeight);
+}
+
+/**
+ * Starts a continuous pose detection loop on a video element.
+ * Returns a stop function that cancels the loop.
+ */
+export function startPoseStream(
+  videoElement: HTMLVideoElement,
+  onResult: (result: PoseAnalysisResult | null) => void,
+): () => void {
+  let stopped = false;
+  let rafId: number;
+
+  async function loop() {
+    if (stopped) return;
+    try {
+      if (!isVideoFrameReady(videoElement)) {
+        onResult({
+          landmarks: [],
+          fullBodyVisible: false,
+          confidence: "low",
+          warnings: ["No camera frame yet. Ensure camera is enabled and visible."],
+        });
+        if (!stopped) {
+          rafId = requestAnimationFrame(loop);
+        }
+        return;
+      }
+
+      const poseLandmarker = await createPoseLandmarker();
+      const rawResult = poseLandmarker.detectForVideo(videoElement, performance.now());
+      const landmarks = rawResult.landmarks?.[0] ?? [];
+
+      if (landmarks.length === 0) {
+        onResult({
+          landmarks: [],
+          fullBodyVisible: false,
+          confidence: "low",
+          warnings: ["No pose detected. Try better lighting and a full-body view."],
+        });
+      } else {
+        const visibility = averageVisibility(landmarks);
+        const fullBodyVisible = [0, 11, 12, 23, 24, 27, 28].every(
+          (index) => (landmarks[index]?.visibility ?? visibility) >= 0.35,
+        );
+        onResult({
+          landmarks,
+          fullBodyVisible,
+          confidence: confidenceFromVisibility(visibility),
+          warnings: fullBodyVisible
+            ? []
+            : ["Full body not clearly visible. Manual measurement preferred."],
+        });
+      }
+    } catch {
+      onResult(null);
+    }
+
+    if (!stopped) {
+      rafId = requestAnimationFrame(loop);
+    }
+  }
+
+  rafId = requestAnimationFrame(loop);
+
+  return () => {
+    stopped = true;
+    cancelAnimationFrame(rafId);
+  };
 }

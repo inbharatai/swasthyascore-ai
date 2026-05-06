@@ -90,6 +90,21 @@ export function ResultScreen({
           note={translate(language, result.waistRisk.noteKey)}
           tone={result.waistRisk.increasedRisk ? "moderate" : "low"}
         />
+        {result.waistHeightRatio.ratio != null ? (
+          <MeasurementCard
+            title={translate(language, "whtr.label")}
+            value={formatDecimal(result.waistHeightRatio.ratio, language, 2)}
+            subtitle={translate(language, result.waistHeightRatio.riskKey)}
+            note={translate(language, "whtr.note")}
+            tone={
+              result.waistHeightRatio.riskLevel === "high"
+                ? "high"
+                : result.waistHeightRatio.riskLevel === "increased"
+                  ? "moderate"
+                  : "low"
+            }
+          />
+        ) : null}
         <MeasurementCard
           title={translate(language, "idrs.title")}
           value={formatDecimal(result.diabetesRisk.score, language, 0)}

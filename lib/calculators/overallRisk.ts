@@ -3,6 +3,7 @@ import { calculateBpRisk } from "@/lib/calculators/bpRisk";
 import { calculateDiabetesRiskScore } from "@/lib/calculators/diabetesRisk";
 import { interpretLabValues } from "@/lib/calculators/labInterpretation";
 import { calculateWaistRisk } from "@/lib/calculators/waistRisk";
+import { calculateWHtR } from "@/lib/calculators/waistHeightRatio";
 import type { TranslationKey } from "@/lib/i18n";
 import type {
   NormalizedHealthInput,
@@ -45,6 +46,7 @@ export function calculateScreeningResult(
 ): ScreeningResult {
   const bmi = calculateBMI(input.weightKg, input.heightCm);
   const waistRisk = calculateWaistRisk(input.gender, input.waistCm);
+  const waistHeightRatio = calculateWHtR(input.waistCm, input.heightCm);
   const diabetesRisk = calculateDiabetesRiskScore({
     age: input.age,
     gender: input.gender,
@@ -90,6 +92,14 @@ export function calculateScreeningResult(
     riskLevel = elevateRisk(riskLevel, "MODERATE");
     reasonKeys.push("reason.waist.increased");
     nextStepKeys.push("next.waistWeightPlan");
+  }
+
+  if (waistHeightRatio.riskLevel === "high" && waistRisk.increasedRisk) {
+    riskLevel = elevateRisk(riskLevel, "HIGH");
+    reasonKeys.push("reason.whtr.high");
+  } else if (waistHeightRatio.riskLevel === "increased" && !waistRisk.increasedRisk) {
+    riskLevel = elevateRisk(riskLevel, "MODERATE");
+    reasonKeys.push("reason.whtr.increased");
   }
 
   if (diabetesRisk.category === "moderate") {
@@ -186,6 +196,7 @@ export function calculateScreeningResult(
   return {
     bmi,
     waistRisk,
+    waistHeightRatio,
     diabetesRisk,
     bpRisk,
     labInterpretation,

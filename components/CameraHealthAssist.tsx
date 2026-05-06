@@ -15,6 +15,7 @@ import { translate } from "@/lib/i18n";
 import { BodyRiskAssist } from "./BodyRiskAssist";
 import { CameraCapture } from "./CameraCapture";
 import { HeightAssist } from "./HeightAssist";
+import { HeightCaptureScreen } from "./HeightCaptureScreen";
 import { VisibleRiskAssist } from "./VisibleRiskAssist";
 
 type CameraMode = "height" | "body" | "waist" | "visible";
@@ -54,6 +55,7 @@ export function CameraHealthAssist({
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [deviceIndex, setDeviceIndex] = useState(0);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [showHeightCapture, setShowHeightCapture] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -191,11 +193,29 @@ export function CameraHealthAssist({
       </div>
 
       {mode === "height" ? (
-        <HeightAssist
-          language={language}
-          videoRef={videoRef}
-          onApplyHeight={(value) => onApplyField("heightCm", value)}
-        />
+        <>
+          <button
+            type="button"
+            onClick={() => setShowHeightCapture(true)}
+            className="w-full rounded-[24px] border border-[var(--brand-700)] bg-[var(--brand-700)] py-3 text-sm font-bold text-white"
+          >
+            {translate(language, "capture.title")}
+          </button>
+          <HeightAssist
+            language={language}
+            videoRef={videoRef}
+            onApplyHeight={(value) => onApplyField("heightCm", value)}
+          />
+          {showHeightCapture ? (
+            <HeightCaptureScreen
+              language={language}
+              onApplyHeight={(value) => {
+                onApplyField("heightCm", value);
+              }}
+              onClose={() => setShowHeightCapture(false)}
+            />
+          ) : null}
+        </>
       ) : null}
       {mode === "body" ? (
         <BodyRiskAssist language={language} videoRef={videoRef} />

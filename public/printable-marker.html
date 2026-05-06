@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SwasthyaScore AI — Printable Height Measurement Marker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff;
+      color: #1e293b;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 20mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12mm;
+    }
+
+    h1 {
+      font-size: 16pt;
+      font-weight: 700;
+      text-align: center;
+      color: #1d4ed8;
+    }
+
+    .subtitle {
+      font-size: 10pt;
+      text-align: center;
+      color: #475569;
+      max-width: 140mm;
+      line-height: 1.5;
+    }
+
+    .warning {
+      border: 2px solid #f59e0b;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #92400e;
+      background: #fef3c7;
+      text-align: center;
+      width: 100%;
+      max-width: 150mm;
+    }
+
+    .marker-wrapper {
+      /* 180mm × 180mm marker */
+      width: 180mm;
+      height: 180mm;
+      border: 3px solid #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+    }
+
+    /*
+      ArUco DICT_4X4_50, Marker ID 0
+      Encoded pattern (4×4 data bits + 1-bit border):
+      The 4×4 pattern for ID 0 is:
+        Row 0: 1 0 1 1
+        Row 1: 1 0 0 0
+        Row 2: 0 0 1 0
+        Row 3: 0 0 1 1
+      With a 1-cell black border = 6×6 outer grid.
+      Cell size = 180mm / 6 = 30mm
+    */
+    .aruco-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 30mm);
+      grid-template-rows: repeat(6, 30mm);
+      border: none;
+    }
+
+    .aruco-cell {
+      width: 30mm;
+      height: 30mm;
+    }
+
+    .b { background: #000; } /* black */
+    .w { background: #fff; } /* white */
+
+    .ruler-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0;
+      width: 180mm;
+    }
+
+    .ruler-tick {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .tick-line {
+      width: 1px;
+      background: #0f172a;
+    }
+    .tick-line.major { height: 6mm; }
+    .tick-line.mid   { height: 4mm; }
+    .tick-line.minor { height: 2mm; }
+
+    .tick-label {
+      font-size: 6pt;
+      color: #334155;
+      margin-top: 1mm;
+      transform: translateX(-50%);
+    }
+
+    .instructions {
+      font-size: 9pt;
+      color: #334155;
+      line-height: 1.7;
+      max-width: 150mm;
+    }
+
+    .instructions li {
+      margin-bottom: 3px;
+    }
+
+    .instructions strong {
+      color: #1e293b;
+    }
+
+    .qr-placeholder {
+      width: 25mm;
+      height: 25mm;
+      border: 2px dashed #94a3b8;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7pt;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 8mm;
+      width: 150mm;
+    }
+
+    .brand {
+      font-size: 8pt;
+      font-weight: 700;
+      color: #1d4ed8;
+    }
+
+    .safety {
+      font-size: 7pt;
+      color: #64748b;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .page { margin: 0; padding: 20mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>SwasthyaScore AI<br>Height Measurement Marker</h1>
+    <p class="subtitle">
+      Use this marker for accurate AI-assisted height measurement in the
+      SwasthyaScore AI camera screen.
+    </p>
+
+    <div class="warning">
+      ⚠️ PRINT AT EXACTLY 100% SCALE — DO NOT "SCALE TO FIT" OR "FIT TO PAGE"<br>
+      This marker must be exactly 180 mm × 180 mm after printing.
+    </div>
+
+    <!--
+      ArUco DICT_4X4_50 Marker ID 0 — 6×6 grid (1-cell black border + 4×4 data)
+      Border cells are always black.
+      Data pattern for ID 0 (MSB first, row-major):
+        R0: 1 0 1 1  →  B W B B
+        R1: 1 0 0 0  →  B W W W
+        R2: 0 0 1 0  →  W W B W
+        R3: 0 0 1 1  →  W W B B
+    -->
+    <div class="marker-wrapper">
+      <div class="aruco-grid">
+        <!-- Row 0: full border (all black) -->
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <!-- Row 1: border + data row 0 + border -->
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell b"></div>
+        <!-- Row 2: border + data row 1 + border -->
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell b"></div>
+        <!-- Row 3: border + data row 2 + border -->
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell b"></div>
+        <!-- Row 4: border + data row 3 + border -->
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell w"></div><!-- 0 -->
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell b"></div><!-- 1 -->
+        <div class="aruco-cell b"></div>
+        <!-- Row 5: full border (all black) -->
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+        <div class="aruco-cell b"></div>
+      </div>
+    </div>
+
+    <!-- 180 mm ruler scale bar -->
+    <div class="ruler-row" id="ruler"></div>
+
+    <ol class="instructions">
+      <li><strong>Print this page at 100% scale</strong> — check your printer settings and disable "Fit to Page" / "Scale to Fit".</li>
+      <li>After printing, <strong>verify the marker is exactly 180 mm × 180 mm</strong> using a ruler. If it is not, reprint at the correct scale.</li>
+      <li>Tape or hold the marker flat on a wall at approximately <strong>chest height</strong> of the person being measured.</li>
+      <li>Open the SwasthyaScore AI app, go to <strong>Camera Assist → Height → Marker Mode</strong>.</li>
+      <li>Stand 1–2 meters from the camera. Keep your <strong>full body visible</strong> with head and feet in frame.</li>
+      <li>Wait for <strong>"Marker detected ✓"</strong> on screen before tapping Capture.</li>
+      <li>The app will show an <strong>estimated height and confidence level</strong>. High confidence results can be applied directly.</li>
+    </ol>
+
+    <div class="bottom-row">
+      <div>
+        <div class="brand">SwasthyaScore AI</div>
+        <div class="safety">ArUco DICT_4X4_50 — Marker ID 0 — Real size: 180 mm</div>
+        <div class="safety">Screening only. Not a medical device.</div>
+      </div>
+      <div class="qr-placeholder no-print">
+        QR Code<br>(optional)
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Generate ruler ticks: 0–180mm, major every 10mm, mid every 5mm, minor every 1mm
+    const ruler = document.getElementById('ruler');
+    if (ruler) {
+      const totalMm = 180;
+      // Each mm = 1mm wide
+      for (let mm = 0; mm <= totalMm; mm++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'ruler-tick';
+        wrap.style.width = '1mm';
+        const line = document.createElement('div');
+        line.className = 'tick-line ' + (mm % 10 === 0 ? 'major' : mm % 5 === 0 ? 'mid' : 'minor');
+        wrap.appendChild(line);
+        if (mm % 10 === 0) {
+          const label = document.createElement('div');
+          label.className = 'tick-label';
+          label.textContent = mm + ' mm';
+          wrap.appendChild(label);
+        }
+        ruler.appendChild(wrap);
+      }
+    }
+  </script>
+</body>
+</html>

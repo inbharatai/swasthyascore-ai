@@ -166,6 +166,9 @@ export function buildReportText(input: {
     dictionary["report.results"],
     `${dictionary["bmi.title"]}: ${formatDecimal(result.bmi.bmi, language)} - ${translate(language, result.bmi.categoryKey)}`,
     `${dictionary["waist.title"]}: ${translate(language, result.waistRisk.messageKey)}`,
+    result.waistHeightRatio.ratio != null
+      ? `${dictionary["whtr.label"]}: ${formatDecimal(result.waistHeightRatio.ratio, language, 2)} - ${translate(language, result.waistHeightRatio.riskKey)}`
+      : "",
     `${dictionary["idrs.title"]}: ${formatDecimal(result.diabetesRisk.score, language, 0)} - ${translate(language, result.diabetesRisk.categoryKey)}`,
     `${dictionary["bp.title"]}: ${translate(language, result.bpRisk.labelKey)}`,
     `${dictionary["lab.title"]}: ${translate(language, result.labInterpretation.summaryKey)}`,
