@@ -129,7 +129,16 @@ export class SwasthyakAdapter {
     filename?: string;
     consentGiven: boolean;
   }): Promise<LabReportEvent> {
-    return this.postJson<LabReportEvent>("/api/v1/lab-reports/analyze", input);
+    // The route handler reads snake_case; every other v1 route is snake_case
+    // on the wire too, so translate here at the boundary (client stays camel).
+    return this.postJson<LabReportEvent>("/api/v1/lab-reports/analyze", {
+      report_id: input.reportId,
+      patient_id: input.patientId,
+      mime_type: input.mimeType,
+      base64_data_url: input.base64DataUrl,
+      filename: input.filename,
+      consent_given: input.consentGiven,
+    });
   }
 }
 

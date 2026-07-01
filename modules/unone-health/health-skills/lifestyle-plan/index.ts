@@ -9,7 +9,7 @@ import type {
 } from "@/modules/unone-health/core/types";
 import { healthAdvisorySchema } from "@/modules/unone-health/core/types";
 import { uuid } from "@/modules/unone-health/core/id";
-import { sanitizeUnsafeWording, SAFETY_NOTE, scanForUnsafeWording } from "@/modules/unone-health/core/safety";
+import { sanitizeUnsafeWording, SAFETY_NOTE } from "@/modules/unone-health/core/safety";
 import { generateHealthAdvisory } from "./HealthAdvisoryAgent";
 
 const profileSchema = z.object({
@@ -106,33 +106,34 @@ export function createGeneratePlanTool(): ToolDescriptor {
 export function enforceHealthAdvisorySafety(
   advisory: HealthAdvisory,
 ): HealthAdvisory {
-  const scan = scanForUnsafeWording(
-    advisory.user_message,
-    advisory.doctor_summary,
-    advisory.family_summary,
-    ...advisory.top_findings.map((f) => `${f.title} ${f.why_it_matters} ${f.recommended_next_step}`),
-    ...advisory.lifestyle_plan.diet,
-    ...advisory.lifestyle_plan.activity,
-    ...advisory.lifestyle_plan.follow_up,
-  );
-
-  let sanitized: HealthAdvisory = {
+  // Unconditionally sanitize EVERY user-facing text field. sanitizeUnsafeWording
+  // is a no-op on clean text, so this is cheap and robust — a diagnosis or
+  // prescription that slips into a finding title or a lifestyle item is caught
+  // here, not just in the three top-level summaries.
+  return {
     ...advisory,
     diagnosis_claimed: false,
     medicine_prescribed: false,
     safety_note: advisory.safety_note || SAFETY_NOTE,
+    user_message: sanitizeUnsafeWording(advisory.user_message),
+    doctor_summary: sanitizeUnsafeWording(advisory.doctor_summary),
+    family_summary: sanitizeUnsafeWording(advisory.family_summary),
+    top_findings: advisory.top_findings.map((f) => ({
+      ...f,
+      title: sanitizeUnsafeWording(f.title),
+      why_it_matters: sanitizeUnsafeWording(f.why_it_matters),
+      recommended_next_step: sanitizeUnsafeWording(f.recommended_next_step),
+    })),
+    lifestyle_plan: {
+      ...advisory.lifestyle_plan,
+      diet: advisory.lifestyle_plan.diet.map(sanitizeUnsafeWording),
+      activity: advisory.lifestyle_plan.activity.map(sanitizeUnsafeWording),
+      sleep: advisory.lifestyle_plan.sleep.map(sanitizeUnsafeWording),
+      hydration: advisory.lifestyle_plan.hydration.map(sanitizeUnsafeWording),
+      avoid: advisory.lifestyle_plan.avoid.map(sanitizeUnsafeWording),
+      follow_up: advisory.lifestyle_plan.follow_up.map(sanitizeUnsafeWording),
+    },
   };
-
-  if (!scan.clean) {
-    sanitized = {
-      ...sanitized,
-      user_message: sanitizeUnsafeWording(advisory.user_message),
-      doctor_summary: sanitizeUnsafeWording(advisory.doctor_summary),
-      family_summary: sanitizeUnsafeWording(advisory.family_summary),
-    };
-  }
-
-  return sanitized;
 }
 
 // keep the internal alias used above

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import type { Language } from "@/lib/i18n";
+import type { Language, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import type { SymptomEvent } from "@/lib/unone-health";
 import { getSwasthyakAdapter } from "@/modules/unone-health/adapters/swasthyak-adapter/SwasthyakAdapter";
@@ -94,15 +94,15 @@ export function SymptomsInput({
                 {translate(language, "unone.symptoms.emergency")}
               </p>
               <ul className="mt-2 list-disc pl-5 text-sm text-red-700">
-                {result.red_flags.map((flag) => (
-                  <li key={flag}>{flag}</li>
+                {result.red_flags.map((flag, index) => (
+                  <li key={`${index}-${flag}`}>{flag}</li>
                 ))}
               </ul>
             </div>
           ) : null}
           <p className="rounded-2xl bg-[var(--surface-muted)] px-4 py-3 text-sm text-[var(--slate-800)]">
             <strong>{translate(language, "unone.symptoms.severity")}: </strong>
-            {result.severity}
+            {translate(language, `unone.severity.${result.severity}` as TranslationKey)}
           </p>
           <p className="text-sm text-[var(--slate-700)]">{result.summary}</p>
         </div>

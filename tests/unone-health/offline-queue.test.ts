@@ -41,14 +41,24 @@ describe("offline queue + event store", () => {
     expect(queue.pending()).toHaveLength(0);
   });
 
-  it("marks failed syncs so they remain pending", async () => {
+  it("keeps failed syncs pending so a later flush retries them", async () => {
     const queue = new InMemoryOfflineQueue();
     queue.enqueue(makeEvent("a"));
+    // first flush fails (network down) — the event MUST remain pending,
+    // otherwise it is stranded forever (the previous behavior).
+    let attempts = 0;
     await queue.flush(async () => {
+      attempts++;
       throw new Error("network down");
     });
-    // failed entries are removed from pending (best-effort); retry re-enqueues
+    expect(queue.pending()).toHaveLength(1);
+
+    // connectivity returns — second flush succeeds and clears the queue.
+    await queue.flush(async (event) => {
+      void event;
+    });
     expect(queue.pending()).toHaveLength(0);
+    expect(attempts).toBe(1); // the second flush did NOT re-run the failed event
   });
 
   it("stores, lists per patient and marks synced", () => {

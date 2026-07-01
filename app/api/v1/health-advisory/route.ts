@@ -4,6 +4,7 @@ import { generateHealthAdvisory } from "@/modules/unone-health/health-skills/lif
 import { enforceHealthAdvisorySafety } from "@/modules/unone-health/health-skills/lifestyle-plan";
 import { serverEventStore } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { uuid, isoNow } from "@/modules/unone-health/core/id";
+import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Health advisory failed." },
+      { error: serverError("health-advisory", error, "Health advisory could not be generated. Please try again.").message },
       { status: 500 },
     );
   }

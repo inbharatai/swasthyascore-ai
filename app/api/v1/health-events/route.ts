@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { healthEventSchema } from "@/modules/unone-health/core/types";
 import { serverEventStore } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { isoNow } from "@/modules/unone-health/core/id";
+import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save event." },
+      { error: serverError("health-events", error, "Could not save the health event. Please try again.").message },
       { status: 500 },
     );
   }

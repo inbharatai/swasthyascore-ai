@@ -95,9 +95,11 @@ describe("rPPG low confidence + fail policy", () => {
     }));
     const samples = aggregateFrameSamples(frames);
     const result = finalizeVitalScan(samples, { cameraMode: "front_face", durationSeconds: 20 }, "mock", FIXED_NOW);
-    if (result.confidence_label === "low") {
-      expect(result.repeat_scan_recommended).toBe(true);
-    }
+    // With all sub-scores at 0.5 and a weak signal, confidence lands ~0.45 (low),
+    // which must recommend a repeat scan. Assert directly — the previous guard
+    // (`if (label === "low")`) made the test silently pass even if the label drifted.
+    expect(result.confidence_label).toBe("low");
+    expect(result.repeat_scan_recommended).toBe(true);
   });
 
   it("synthesizes deterministic mock frames", () => {

@@ -27,6 +27,45 @@ It helps families, field workers, NGOs, clinics, and community healthcare teams 
 - Report download, WhatsApp sharing, email sharing, native phone share sheet, and copy-to-clipboard without backend messaging APIs.
 - Installable PWA with manifest, icons, service worker, offline shell, and mobile safe-area spacing.
 - Future-ready placeholders for authentication, patient records, lab reports, referral notes, audit logs, and Supabase schema.
+- UnoOne Health — AI Health Intelligence module: lab report analysis, camera vital scan (rPPG), voice/text symptoms, a combined health advisory, and a per-patient health timeline. Cloud-first via OpenAI 5.5; rPPG runs on-device. Reachable from the **Health AI** tab on the home dashboard.
+
+## UnoOne Health — AI Health Intelligence
+
+`modules/unone-health/` embeds a renamed, TypeScript-first medical agent (the Android UnoOne Local Agent is reference-only and is never modified) as a Swasthyak web module. A generic runtime (`UnoOneHealthRuntime`) dispatches to a registry of health tools, validates every input and output with Zod, and enforces consent/permission gates before any tool runs. Cloud reasoning uses the existing OpenAI client (`lib/ai/openaiClient.ts`, modes default/vision/premium, `OPENAI_MODEL_PREMIUM=gpt-5.5`); rPPG vitals are computed entirely on the client.
+
+### Tools (registered in `modules/unone-health/health-skills/`)
+
+- `health.vitals.rppg_scan` — camera vital scan. Heart rate (and respiratory rate in face mode) from green-channel rPPG. Confidence uses the exact 25/20/15/25/15 weighting with 0.80/0.60/0.40 thresholds; low confidence recommends a repeat scan and fail nulls the readings.
+- `health.lab.extract_markers` — lab report analysis. Extracts patient/report metadata and markers (diabetes, lipids, kidney, liver, thyroid, CBC/anemia, inflammation, vitamins/minerals), honors the report's own reference ranges, and assigns `severity` (normal/watch/consult_doctor/urgent). PDFs and images via OpenAI vision + premium.
+- `health.symptoms.collect` — text/voice symptoms. Returns a `SymptomEvent` with severity and red flags; a local emergency matcher escalates chest pain, severe breathlessness, fainting, stroke signs, etc.
+- `health.voice.summarize` — voice note to a structured summary via OpenAI.
+- `health.reasoning.generate_plan` — combined health advisory. Fuses lab markers + rPPG vitals + symptoms + voice + age/sex/conditions/meds/BMI into a strict-JSON advisory (`risk_level`, `top_findings`, `user_message`, `doctor_summary`, `family_summary`, `lifestyle_plan`, `safety_note`).
+- `health.record.save` — persist a canonical `HealthEvent` (privacy + safety fields, `synced_at`).
+- `health.sync.queue` — offline queue + per-patient event store with retry-friendly flush (failed syncs stay pending).
+
+### API routes (`app/api/v1/`, Next.js 16 App Router conventions)
+
+- `POST /api/v1/vital-scan` — accept a computed `VitalScanResult` (no video is uploaded).
+- `POST /api/v1/lab-reports/upload` — file + consent → store.
+- `POST /api/v1/lab-reports/analyze` — OpenAI 5.5 → `LabReportEvent`. Reads snake_case (`report_id`, `patient_id`, `mime_type`, `base64_data_url`, `consent_given`).
+- `POST /api/v1/symptoms` — `SymptomEvent`.
+- `POST /api/v1/health-advisory` — OpenAI 5.5 → advisory.
+- `POST /api/v1/health-events` — persist an event.
+- `GET /api/v1/patient/[id]/timeline` — list a patient's events.
+
+Backend persistence is an in-memory store typed and clearly marked as a placeholder until the real Swasthyak backend lands. `SwasthyakAdapter` wraps these routes for client code.
+
+### Safety & privacy guarantees
+
+- No diagnosis claims, no medicine prescriptions. Every advisory and lab explanation is post-processed (`enforceHealthAdvisorySafety`, `enforceLabLensSafety`) to strip diagnosis/prescription wording and force `diagnosis_claimed: false`, `medicine_prescribed: false`.
+- No raw face video is uploaded by default; `raw_video_uploaded` is always `false`. Camera vitals are computed on-device.
+- Explicit consent is required before lab processing, camera scan, voice/symptom analysis, and the combined advisory.
+- Emergency red-flag escalation banner; confidence is always shown; low confidence triggers a repeat-scan prompt.
+- Route handlers log real errors server-side and return generic safe messages to the client (`routeErrors.ts`).
+
+### rPPG status (honest)
+
+- Partial real + mock fallback. The real `SignalRppgEngine` performs genuine frame capture, MediaPipe face ROI, green-channel signal, detrend, biquad bandpass, and autocorrelation HR (RR best-effort), and is flagged experimental / not clinically validated. The `MockRppgEngine` is the safe demo default (clearly labeled, results tagged). Front/back camera toggle is real. Default engine selectable via `NEXT_PUBLIC_UNONE_RPPG_ENGINE` (default `mock`).
 
 ## Privacy And Data
 
@@ -163,8 +202,8 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 
 ## Project Structure
 
-- `app/` contains the PWA shell, dashboard, offline page, and AI API routes.
-- `components/` contains the mobile-first bilingual UI.
+- `app/` contains the PWA shell, dashboard, offline page, AI API routes, and `/api/v1` health routes.
+- `components/` contains the mobile-first bilingual UI, including `components/unone-health/` for the Health AI views.
 - `components/camera/` and camera-related components provide camera assistance.
 - `lib/calculators/` contains deterministic medical screening logic.
 - `lib/camera/` contains camera utilities, MediaPipe setup, and safe estimation rules.
@@ -172,7 +211,8 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 - `lib/i18n/` contains English/Hindi dictionaries.
 - `lib/utils/` contains validation, unit conversion, report generation, and sharing utilities.
 - `lib/future/` contains auth/database placeholders.
-- `tests/` contains calculator, risk engine, AI schema, report, sharing, camera fallback, unit conversion, and translation coverage tests.
+- `modules/unone-health/` contains the UnoOne Health AI module (core runtime, tool registry, permissions, offline queue, health skills, and the Swasthyak adapter). `lib/unone-health.ts` is the barrel re-export for app code.
+- `tests/` contains calculator, risk engine, AI schema, report, sharing, camera fallback, unit conversion, translation coverage, and `unone-health` (rPPG signal, vital scan, regression, offline queue) tests.
 
 ## Manual Test Checklist
 
@@ -201,6 +241,11 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 23. Open email with subject/body prefilled.
 24. Use native share where supported.
 25. Confirm no diagnosis or medicine prescription language appears.
+26. Open the Health AI tab and confirm the AI Health Intelligence highlight banner and module card both navigate to it.
+27. Grant consent and run a mock camera vital scan; confirm a result card with a confidence label and the demo-mode note appear.
+28. Upload a sample lab report; confirm markers and critical flags render and that no marker says "you have …" or prescribes a medicine.
+29. Enter symptoms and generate a health advisory; confirm a risk level, lifestyle plan, doctor summary, family summary, and safety note render with no diagnosis wording.
+30. Turn offline and confirm a vital scan saves offline with a "will sync" banner, then syncs when back online.
 
 ## Known Limitations
 
@@ -211,6 +256,8 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 - Browser voice input depends on device and browser support.
 - MediaPipe pose detection depends on lighting, full-body visibility, browser support, and model loading.
 - Camera Health Assist is guidance only and does not replace manual measurements.
+- UnoOne Health rPPG is partial real + mock fallback; the signal engine is experimental and not clinically validated. It is for awareness only and never diagnoses.
+- UnoOne Health backend persistence is an in-memory placeholder until the real Swasthyak backend is connected.
 
 ## Safety Boundaries
 

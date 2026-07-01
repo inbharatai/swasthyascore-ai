@@ -6,6 +6,7 @@ import {
 } from "@/modules/unone-health/core/types";
 import { serverEventStore } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { uuid, isoNow } from "@/modules/unone-health/core/id";
+import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save scan." },
+      { error: serverError("vital-scan", error, "Could not save the vital scan. Please try again.").message },
       { status: 500 },
     );
   }

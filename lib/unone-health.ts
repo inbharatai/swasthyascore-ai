@@ -100,6 +100,7 @@ export {
   type CameraScanAction,
   type ScanStatus,
   type CameraFacing,
+  type QualityHint,
 } from "@/modules/unone-health/health-skills/rppg-vital-scan/cameraScanState";
 
 export {

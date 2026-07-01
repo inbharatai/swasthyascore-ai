@@ -74,12 +74,17 @@ export class InMemoryOfflineQueue implements OfflineQueue {
   }
 
   async flush(syncFn: (event: HealthEvent) => Promise<void>): Promise<void> {
+    // Iterate a snapshot of pending events. On failure, leave the event pending
+    // so a later flush (once connectivity returns) retries it — matching
+    // LocalStorageOfflineQueue, which keeps failed events in the queue. Marking
+    // failed events "failed" here previously stranded them permanently because
+    // pending() only returns "pending" events.
     for (const event of this.pending()) {
       try {
         await syncFn(event);
         this.statuses.set(event.event_id, "synced");
       } catch {
-        this.statuses.set(event.event_id, "failed");
+        // remain "pending" for the next flush
       }
     }
   }

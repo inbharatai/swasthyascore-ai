@@ -58,11 +58,15 @@ export function bandpass(
   if (wLow <= 0 || wHigh >= 1 || wLow >= wHigh) return signal;
 
   // Pre-warp + analog prototype (Butterworth order 2 bandpass, Q ~ center/bw).
+  // `center` is the geometric-mean cutoff as a FRACTION OF NYQUIST (0..1). The
+  // RBJ biquad cookbook formulas need w0 in RADIANS/sample = 2*pi*f0/Fs. Since
+  // f0 = center * (Fs/2), w0 = 2*pi*center*(Fs/2)/Fs = pi*center. The missing
+  // pi factor here previously shifted the filter peak to ~1/pi of the target.
   const center = Math.sqrt(wLow * wHigh);
   const bandwidth = wHigh - wLow;
   const Q = center / bandwidth;
 
-  const coefficients = computeBandpassCoefficients(center, Q);
+  const coefficients = computeBandpassCoefficients(Math.PI * center, Q);
   return applyBiquad(signal, coefficients);
 }
 
@@ -127,19 +131,28 @@ function applyBiquad(
  * Estimate the dominant frequency via autocorrelation. Robust for short,
  * noisy signals where an FFT bin resolution is coarse. Returns Hz (0 if no
  * clear periodicity).
+ *
+ * `minHz`/`maxHz` bound the search window so the same routine serves heart
+ * rate (default 0.5–3.2 Hz) and respiratory rate (0.1–0.5 Hz). Without bounds
+ * the RR autocorrelation peak (period 4–10s) falls outside the HR lag window
+ * and is never found.
  */
 export function dominantFrequencyHz(
   signal: number[],
   sampleRate: number,
+  minHz = 0.5,
+  maxHz = 3.2,
 ): number {
-  if (signal.length < 8 || sampleRate <= 0) return 0;
+  if (signal.length < 8 || sampleRate <= 0 || maxHz <= 0 || minHz <= 0) return 0;
 
   const normalized = normalize(signal);
   const maxLag = Math.min(
     normalized.length - 1,
-    Math.floor(sampleRate / 0.5), // up to ~0.5 Hz lag window
+    Math.floor(sampleRate / minHz), // longest period = lowest frequency
   );
-  const minLag = Math.max(1, Math.floor(sampleRate / 3.2)); // 3.2 Hz cap
+  const minLag = Math.max(1, Math.floor(sampleRate / maxHz)); // shortest period
+
+  if (maxLag < minLag) return 0;
 
   let bestLag = 0;
   let bestScore = -Infinity;

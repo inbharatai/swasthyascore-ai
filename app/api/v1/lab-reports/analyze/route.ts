@@ -10,6 +10,7 @@ import {
   serverLabFileStore,
 } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { uuid, isoNow } from "@/modules/unone-health/core/id";
+import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,10 +122,11 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Lab analysis failed. Please enter values manually.",
+        error: serverError(
+          "lab-reports/analyze",
+          error,
+          "Lab analysis could not be completed. Please try a clearer photo or enter values manually.",
+        ).message,
       },
       { status: 500 },
     );

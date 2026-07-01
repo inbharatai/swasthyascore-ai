@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import type { Language } from "@/lib/i18n";
+import type { Language, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import type { HealthEvent } from "@/lib/unone-health";
 import { getSwasthyakAdapter } from "@/modules/unone-health/adapters/swasthyak-adapter/SwasthyakAdapter";
@@ -56,7 +56,9 @@ export function HealthTimeline({ language, patientId }: HealthTimelineProps) {
       </div>
 
       {loading ? (
-        <p className="text-sm text-[var(--slate-600)]">Loading…</p>
+        <p className="text-sm text-[var(--slate-600)]">
+          {translate(language, "unone.timeline.loading")}
+        </p>
       ) : events.length === 0 ? (
         <p className="text-sm text-[var(--slate-600)]">
           {translate(language, "unone.timeline.empty")}
@@ -70,10 +72,15 @@ export function HealthTimeline({ language, patientId }: HealthTimelineProps) {
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-[var(--slate-900)]">
-                  {event.event_type.replace("_", " ")}
+                  {translate(
+                    language,
+                    `unone.timeline.event.${event.event_type}` as TranslationKey,
+                  )}
                 </span>
                 <span className="text-xs text-[var(--slate-600)]">
-                  {event.synced_at ? "✓ synced" : "pending"}
+                  {event.synced_at
+                    ? translate(language, "unone.timeline.synced")
+                    : translate(language, "unone.timeline.pending")}
                 </span>
               </div>
               <p className="mt-1 text-xs text-[var(--slate-600)]">

@@ -158,7 +158,7 @@ function estimateRespiratoryRate(samples: RppgScanSamples): number | null {
   if (samples.green.length < 16 || samples.sampleRate <= 0) return null;
   const detrended = detrend(samples.green, 31);
   const filtered = bandpass(detrended, samples.sampleRate, 0.1, 0.5);
-  const hz = dominantFrequencyHz(filtered, samples.sampleRate);
+  const hz = dominantFrequencyHz(filtered, samples.sampleRate, 0.1, 0.5);
   const rpm = Math.round(hz * 60);
   if (rpm < 8 || rpm > 40) return null;
   return rpm;

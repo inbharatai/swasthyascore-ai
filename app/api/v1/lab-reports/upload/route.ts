@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAcceptedLabFile } from "@/modules/unone-health/health-skills/lab-lens/LabLensAgent";
 import { serverLabFileStore } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { uuid, isoNow } from "@/modules/unone-health/core/id";
+import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Lab upload failed." },
+      { error: serverError("lab-reports/upload", error, "Lab report upload failed. Please try again.").message },
       { status: 500 },
     );
   }

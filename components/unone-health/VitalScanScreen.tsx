@@ -67,28 +67,30 @@ export function VitalScanScreen({
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  const startStream = useCallback(
-    async (facing: CameraFacing) => {
-      if (!isCameraSupported()) {
-        dispatch({ type: "camera_unavailable" });
-        return;
+  const startStream = useCallback(async (facing: CameraFacing) => {
+    if (!isCameraSupported()) {
+      dispatch({ type: "camera_unavailable" });
+      return;
+    }
+    // Only signal permission request here. The caller owns the facing transition
+    // (handleSwitch dispatches switch_camera). Dispatching switch_camera from
+    // inside startStream used to double-flip the reducer facing back to its
+    // previous value (stale closure), which corrupted the camera_mode metadata
+    // sent to Swasthyak and mirrored the wrong camera.
+    dispatch({ type: "request_permission" });
+    try {
+      const stream = await requestCameraStream({ facingMode: facing });
+      stopCameraStream(streamRef.current);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
-      dispatch({ type: facing === state.facing ? "request_permission" : "switch_camera" });
-      try {
-        const stream = await requestCameraStream({ facingMode: facing });
-        stopCameraStream(streamRef.current);
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch (error) {
-        dispatch({ type: "permission_denied" });
-        void getFriendlyCameraErrorKey(error);
-      }
-    },
-    [state.facing],
-  );
+    } catch (error) {
+      dispatch({ type: "permission_denied" });
+      void getFriendlyCameraErrorKey(error);
+    }
+  }, []);
 
   const completeScan = useCallback(() => {
     const samples = aggregateFrameSamples(framesRef.current);
@@ -114,7 +116,6 @@ export function VitalScanScreen({
 
   const runLoop = useCallback(() => {
     framesRef.current = [];
-    startRef.current = performance.now();
     dispatch({ type: "start_scan" });
 
     const ensureProvider = async () => {
@@ -128,6 +129,9 @@ export function VitalScanScreen({
     };
 
     void ensureProvider().then(() => {
+      // Start the sampling clock AFTER warmup so the 20s window contains 20s
+      // of actual frames (not warmup + ~17s).
+      startRef.current = performance.now();
       const tick = () => {
         const elapsed = (performance.now() - startRef.current) / 1000;
         const fraction = Math.min(1, elapsed / DURATION_SECONDS);
@@ -135,9 +139,12 @@ export function VitalScanScreen({
         let sample: RppgFrameSample | null = null;
         if (ENGINE === "real") {
           sample = providerRef.current?.sample() ?? null;
-          if (!sample) dispatch({ type: "no_face" });
+          // quality hint is decoupled from scan status — a transient missing
+          // face no longer permanently hides the progress bar.
+          dispatch({ type: sample ? "quality_ok" : "no_face" });
         } else {
           sample = synthesizeMockFrame(elapsed, 72);
+          dispatch({ type: "quality_ok" });
         }
         if (sample) framesRef.current.push(sample);
 
@@ -156,8 +163,9 @@ export function VitalScanScreen({
   async function handleSwitch() {
     stopCamera();
     const next: CameraFacing = state.facing === "user" ? "environment" : "user";
+    // switch_camera flips the reducer facing to `next` (and cameraMode with it);
+    // startStream then requests that exact facing. No double dispatch.
     dispatch({ type: "switch_camera" });
-    // small delay so the reducer-facing updates before re-requesting
     await startStream(next);
   }
 
@@ -231,9 +239,19 @@ export function VitalScanScreen({
           {translate(language, "unone.scan.unavailable")}
         </p>
       ) : null}
-      {state.status === "no_face" ? (
+      {state.qualityHint === "no_face" ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {translate(language, "unone.scan.noFace")}
+        </p>
+      ) : null}
+      {state.qualityHint === "low_light" ? (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {translate(language, "unone.scan.lowLight")}
+        </p>
+      ) : null}
+      {state.qualityHint === "motion" ? (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {translate(language, "unone.scan.motion")}
         </p>
       ) : null}
 

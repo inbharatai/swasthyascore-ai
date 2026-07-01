@@ -11,6 +11,7 @@ import {
 } from "@/modules/unone-health/health-skills/symptom-check";
 import { serverEventStore } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { uuid, isoNow } from "@/modules/unone-health/core/id";
+import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save symptoms." },
+      { error: serverError("symptoms", error, "Could not save symptoms. Please try again.").message },
       { status: 500 },
     );
   }

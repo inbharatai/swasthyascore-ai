@@ -56,7 +56,7 @@ export function LabLensUpload({
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : translate(language, "unone.lab.noMarkers"),
+          : translate(language, "unone.lab.error.generic"),
       );
     } finally {
       setLoading(false);
@@ -123,8 +123,8 @@ export function LabLensUpload({
                 {translate(language, "unone.lab.critical")}
               </p>
               <ul className="mt-2 list-disc pl-5 text-sm text-red-700">
-                {report.critical_flags.map((flag) => (
-                  <li key={flag}>{flag}</li>
+                {report.critical_flags.map((flag, index) => (
+                  <li key={`${index}-${flag}`}>{flag}</li>
                 ))}
               </ul>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Stethoscope, Users, Salad, ShieldAlert } from "lucide-react";
-import type { Language } from "@/lib/i18n";
+import type { Language, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import type {
   HealthAdvisory,
@@ -74,9 +74,17 @@ export function HealthAdvisoryView({
       </h2>
 
       <p className="text-sm text-[var(--slate-600)]">
-        {labReport ? "Lab report attached. " : "No lab report yet. "}
-        {vitals ? "Vital scan attached. " : "No vital scan yet. "}
-        {symptoms ? "Symptoms attached." : "No symptoms yet."}
+        {labReport
+          ? translate(language, "unone.advisory.attached.lab")
+          : translate(language, "unone.advisory.attached.labNo")}
+        {" "}
+        {vitals
+          ? translate(language, "unone.advisory.attached.vitals")
+          : translate(language, "unone.advisory.attached.vitalsNo")}
+        {" "}
+        {symptoms
+          ? translate(language, "unone.advisory.attached.symptoms")
+          : translate(language, "unone.advisory.attached.symptomsNo")}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -84,7 +92,7 @@ export function HealthAdvisoryView({
           type="number"
           value={age}
           onChange={(e) => setAge(e.target.value)}
-          placeholder="Age"
+          placeholder={translate(language, "unone.advisory.age")}
           className="rounded-full border border-[var(--border-soft)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand-700)]"
         />
         <select
@@ -92,10 +100,10 @@ export function HealthAdvisoryView({
           onChange={(e) => setSex(e.target.value)}
           className="rounded-full border border-[var(--border-soft)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand-700)]"
         >
-          <option value="">Sex</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
+          <option value="">{translate(language, "unone.advisory.sex")}</option>
+          <option value="male">{translate(language, "unone.advisory.sex.male")}</option>
+          <option value="female">{translate(language, "unone.advisory.sex.female")}</option>
+          <option value="other">{translate(language, "unone.advisory.sex.other")}</option>
         </select>
       </div>
 
@@ -129,7 +137,7 @@ export function HealthAdvisoryView({
               {translate(language, "unone.advisory.risk")}:{" "}
             </strong>
             <span className="text-sm font-bold text-[var(--brand-700)]">
-              {advisory.risk_level}
+              {translate(language, `unone.risk.${advisory.risk_level}` as TranslationKey)}
             </span>
             {advisory.repeat_scan_recommended ? (
               <p className="mt-1 text-xs text-amber-700">
@@ -145,8 +153,8 @@ export function HealthAdvisoryView({
               {translate(language, "unone.advisory.findings")}
             </h3>
             <ul className="mt-2 space-y-2">
-              {advisory.top_findings.map((finding) => (
-                <li key={finding.title} className="rounded-2xl border border-[var(--border-soft)] bg-white p-3 text-sm">
+              {advisory.top_findings.map((finding, index) => (
+                <li key={`${index}-${finding.title}`} className="rounded-2xl border border-[var(--border-soft)] bg-white p-3 text-sm">
                   <p className="font-semibold text-[var(--slate-900)]">{finding.title}</p>
                   <p className="mt-1 text-[var(--slate-700)]">{finding.why_it_matters}</p>
                   <p className="mt-1 text-xs text-[var(--brand-700)]">{finding.recommended_next_step}</p>
@@ -193,13 +201,13 @@ function LifestylePlan({
   language: Language;
   plan: HealthAdvisory["lifestyle_plan"];
 }) {
-  const groups: { key: string; items: string[] }[] = [
-    { key: "Diet", items: plan.diet },
-    { key: "Activity", items: plan.activity },
-    { key: "Sleep", items: plan.sleep },
-    { key: "Hydration", items: plan.hydration },
-    { key: "Avoid", items: plan.avoid },
-    { key: "Follow up", items: plan.follow_up },
+  const groups: { key: TranslationKey; items: string[] }[] = [
+    { key: "unone.advisory.lifestyle.diet", items: plan.diet },
+    { key: "unone.advisory.lifestyle.activity", items: plan.activity },
+    { key: "unone.advisory.lifestyle.sleep", items: plan.sleep },
+    { key: "unone.advisory.lifestyle.hydration", items: plan.hydration },
+    { key: "unone.advisory.lifestyle.avoid", items: plan.avoid },
+    { key: "unone.advisory.lifestyle.followUp", items: plan.follow_up },
   ];
   const nonEmpty = groups.filter((g) => g.items.length > 0);
   if (nonEmpty.length === 0) return null;
@@ -213,11 +221,11 @@ function LifestylePlan({
         {nonEmpty.map((group) => (
           <div key={group.key} className="rounded-xl bg-[var(--surface-muted)] p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-[var(--brand-700)]">
-              {group.key}
+              {translate(language, group.key)}
             </p>
             <ul className="mt-1 list-disc pl-4 text-sm text-[var(--slate-700)]">
-              {group.items.map((item) => (
-                <li key={item}>{item}</li>
+              {group.items.map((item, index) => (
+                <li key={`${index}-${item}`}>{item}</li>
               ))}
             </ul>
           </div>

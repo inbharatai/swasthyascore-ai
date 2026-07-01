@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { runStructuredResponse } from "@/lib/ai/openaiClient";
 import { SAFETY_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import {
+  sanitizeUnsafeWording,
+  scanForUnsafeWording,
+} from "@/modules/unone-health/core/safety";
 import { LAB_LENS_SYSTEM_PROMPT, LAB_LENS_USER_PROMPT } from "./prompts";
 
 /**
@@ -64,7 +68,7 @@ export async function analyzeLabReport(input: {
 }): Promise<LabLensOutput> {
   const filePart = buildFilePart(input);
 
-  return runStructuredResponse({
+  const output = await runStructuredResponse({
     // "premium" resolves to OPENAI_MODEL_PREMIUM (gpt-5.5) per .env.example.
     mode: "premium",
     schema: labLensOutputSchema,
@@ -86,6 +90,35 @@ export async function analyzeLabReport(input: {
       },
     ],
   });
+
+  return enforceLabLensSafety(output);
+}
+
+/**
+ * Post-check the model output for diagnosis/prescription wording. The prompt
+ * forbids it, but prompts are not enforcement — sanitize any marker
+ * explanation or the overall summary that drifts, mirroring the advisory path.
+ */
+export function enforceLabLensSafety(output: LabLensOutput): LabLensOutput {
+  const scan = scanForUnsafeWording(
+    output.overall_summary,
+    ...output.markers.map((m) => m.explanation),
+  );
+  if (scan.clean) return output;
+  return {
+    ...output,
+    overall_summary: sanitizeUnsafeWording(output.overall_summary),
+    markers: output.markers.map((m) => ({
+      ...m,
+      explanation: sanitizeUnsafeWording(m.explanation),
+    })),
+  };
+}
+
+/** Strip the `data:<mime>;base64,` prefix, returning raw base64. */
+function stripDataUrlPrefix(dataUrl: string): string {
+  const comma = dataUrl.indexOf(",");
+  return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
 function buildFilePart(input: {
@@ -96,10 +129,12 @@ function buildFilePart(input: {
   | { type: "input_image"; image_url: string }
   | { type: "input_file"; filename: string; file_data: string } {
   if (input.mimeType.toLowerCase() === "application/pdf") {
+    // The OpenAI SDK types `input_file.file_data` as raw base64 (NOT a data
+    // URL). `input_image.image_url` accepts data URLs, so images keep theirs.
     return {
       type: "input_file",
       filename: input.filename ?? "lab-report.pdf",
-      file_data: input.base64DataUrl,
+      file_data: stripDataUrlPrefix(input.base64DataUrl),
     };
   }
   return { type: "input_image", image_url: input.base64DataUrl };

@@ -5,7 +5,7 @@ import type {
   ToolDescriptor,
 } from "@/modules/unone-health/core/types";
 import { symptomEventSchema } from "@/modules/unone-health/core/types";
-import { detectRedFlags } from "@/modules/unone-health/core/safety";
+import { detectRedFlags, sanitizeUnsafeWording } from "@/modules/unone-health/core/safety";
 import { uuid } from "@/modules/unone-health/core/id";
 import { summarizeVoiceNote } from "./VoiceGuideAgent";
 
@@ -44,14 +44,19 @@ export function createVoiceSummarizeTool(): ToolDescriptor {
       const localFlags = detectRedFlags(data.transcript, ai.summary);
       const redFlags = Array.from(new Set([...ai.red_flags, ...localFlags]));
 
+      // Sanitize any diagnosis/prescription wording the model may have emitted
+      // in the summary or symptom phrases (prompt forbids it; this enforces it).
+      const summary = sanitizeUnsafeWording(ai.summary);
+      const symptoms = ai.symptoms.map(sanitizeUnsafeWording);
+
       const event: SymptomEvent = {
         event_type: "symptom_event",
         source: "voice",
-        symptoms: ai.symptoms,
+        symptoms,
         duration: ai.duration,
         severity: ai.severity,
         red_flags: redFlags,
-        summary: ai.summary,
+        summary,
         created_at: context.now(),
       };
 

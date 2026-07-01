@@ -22,6 +22,10 @@ export type ScanStatus =
   | "offline_saved"
   | "synced";
 
+/** Transient per-frame quality hint, decoupled from the scan lifecycle so a
+ * missing face / bad light / motion never permanently overrides "scanning". */
+export type QualityHint = "no_face" | "low_light" | "motion" | null;
+
 export interface CameraScanState {
   status: ScanStatus;
   facing: CameraFacing;
@@ -31,6 +35,7 @@ export interface CameraScanState {
   online: boolean;
   result: VitalScanResult | null;
   error: string | null;
+  qualityHint: QualityHint;
 }
 
 export type CameraScanAction =
@@ -44,6 +49,7 @@ export type CameraScanAction =
   | { type: "no_face" }
   | { type: "low_light" }
   | { type: "motion" }
+  | { type: "quality_ok" }
   | { type: "switch_camera" }
   | { type: "scan_complete"; result: VitalScanResult }
   | { type: "scan_failed"; error: string }
@@ -60,6 +66,7 @@ export const initialCameraScanState: CameraScanState = {
   online: true,
   result: null,
   error: null,
+  qualityHint: null,
 };
 
 export function cameraFacingToMode(
@@ -88,15 +95,24 @@ export function cameraScanReducer(
       return { ...state, status: "camera_unavailable" };
     case "start_scan":
       if (!state.consentGiven) return state;
-      return { ...state, status: "scanning", progress: 0, result: null, error: null };
+      return {
+        ...state,
+        status: "scanning",
+        progress: 0,
+        result: null,
+        error: null,
+        qualityHint: null,
+      };
     case "progress":
       return { ...state, progress: action.fraction };
     case "no_face":
-      return { ...state, status: "no_face" };
+      return { ...state, qualityHint: "no_face" };
     case "low_light":
-      return { ...state, status: "low_light" };
+      return { ...state, qualityHint: "low_light" };
     case "motion":
-      return { ...state, status: "motion" };
+      return { ...state, qualityHint: "motion" };
+    case "quality_ok":
+      return { ...state, qualityHint: null };
     case "switch_camera": {
       const nextFacing: CameraFacing =
         state.facing === "user" ? "environment" : "user";
@@ -105,6 +121,7 @@ export function cameraScanReducer(
         status: "switching",
         facing: nextFacing,
         cameraMode: cameraFacingToMode(nextFacing, false),
+        qualityHint: null,
       };
     }
     case "scan_complete": {
@@ -117,14 +134,20 @@ export function cameraScanReducer(
             : label === "low"
               ? "low_confidence"
               : "failed";
-      return { ...state, status, progress: 1, result: action.result };
+      return {
+        ...state,
+        status,
+        progress: 1,
+        result: action.result,
+        qualityHint: null,
+      };
     }
     case "scan_failed":
-      return { ...state, status: "failed", error: action.error };
+      return { ...state, status: "failed", error: action.error, qualityHint: null };
     case "save_offline":
-      return { ...state, status: "offline_saved" };
+      return { ...state, status: "offline_saved", qualityHint: null };
     case "synced":
-      return { ...state, status: "synced" };
+      return { ...state, status: "synced", qualityHint: null };
     case "reset":
       return { ...initialCameraScanState, online: state.online };
     default:

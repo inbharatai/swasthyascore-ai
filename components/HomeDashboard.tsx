@@ -324,6 +324,33 @@ function HomeView({
         </div>
       </section>
 
+      <section className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#0f766e_0%,#0369a1_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/85">
+              <BrainCircuit className="h-4 w-4" />
+              {translate(language, "unone.kicker")}
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+              {translate(language, "unone.title")}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-white/85">
+              {translate(language, "unone.subtitle")}
+            </p>
+            <p className="mt-3 text-xs leading-5 text-white/75">
+              {translate(language, "unone.privacy")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onTabChange("ai")}
+            className="min-h-12 shrink-0 rounded-full bg-white px-6 text-sm font-bold text-emerald-950 shadow-sm"
+          >
+            {translate(language, "nav.ai")}
+          </button>
+        </div>
+      </section>
+
       <ProductMediaShowcase language={language} />
 
       <div className="grid gap-4 lg:grid-cols-2">
