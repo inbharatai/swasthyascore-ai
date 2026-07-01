@@ -72,11 +72,28 @@ const moduleCards = [
     descriptionKey: "card.referral.description",
     tab: "report",
   },
+] as const;
+
+const aiShowcaseCards = [
+  {
+    icon: FileText,
+    titleKey: "unone.section.lab",
+    descriptionKey: "unone.showcase.lab",
+  },
+  {
+    icon: HeartPulse,
+    titleKey: "unone.section.scan",
+    descriptionKey: "unone.showcase.scan",
+  },
+  {
+    icon: MessageCircleHeart,
+    titleKey: "unone.section.symptoms",
+    descriptionKey: "unone.showcase.symptoms",
+  },
   {
     icon: BrainCircuit,
-    titleKey: "unone.title",
-    descriptionKey: "unone.subtitle",
-    tab: "ai",
+    titleKey: "unone.section.advisory",
+    descriptionKey: "unone.showcase.advisory",
   },
 ] as const;
 
@@ -324,30 +341,52 @@ function HomeView({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#0f766e_0%,#0369a1_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-2xl">
-            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/85">
+      <section className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#064e3b_0%,#0f766e_45%,#0369a1_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-7">
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white/90">
               <BrainCircuit className="h-4 w-4" />
               {translate(language, "unone.kicker")}
             </p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
               {translate(language, "unone.title")}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-white/85">
-              {translate(language, "unone.subtitle")}
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/85">
+              {translate(language, "unone.showcase.subtitle")}
             </p>
-            <p className="mt-3 text-xs leading-5 text-white/75">
+            <p className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-xs leading-5 text-white/80 ring-1 ring-white/15">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
               {translate(language, "unone.privacy")}
             </p>
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => onTabChange("ai")}
+                className="min-h-12 rounded-full bg-white px-6 text-sm font-bold text-emerald-950 shadow-sm"
+              >
+                {translate(language, "unone.showcase.cta")}
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onTabChange("ai")}
-            className="min-h-12 shrink-0 rounded-full bg-white px-6 text-sm font-bold text-emerald-950 shadow-sm"
-          >
-            {translate(language, "nav.ai")}
-          </button>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {aiShowcaseCards.map(({ icon: Icon, titleKey, descriptionKey }) => (
+              <div
+                key={titleKey}
+                className="rounded-[24px] bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm"
+              >
+                <span className="inline-flex rounded-2xl bg-white/15 p-2.5 text-white">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="mt-3 text-sm font-bold text-white">
+                  {translate(language, titleKey)}
+                </h3>
+                <p className="mt-1.5 text-xs leading-5 text-white/80">
+                  {translate(language, descriptionKey)}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

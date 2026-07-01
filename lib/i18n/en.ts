@@ -619,6 +619,17 @@ export const en = {
     "Lab report analysis, camera vital scan, symptoms, and a combined health advisory. Cloud-first via OpenAI 5.5; rPPG runs on your device.",
   "unone.privacy":
     "No raw face video is uploaded. Camera vitals are computed on your device. Diagnosis and prescriptions are never produced.",
+  "unone.showcase.subtitle":
+    "Four AI health tools with on-device privacy and cloud-grade reasoning.",
+  "unone.showcase.cta": "Open Health AI",
+  "unone.showcase.lab":
+    "AI reads your lab report and flags values that need a doctor's review.",
+  "unone.showcase.scan":
+    "On-device camera vital scan for heart and breathing rate.",
+  "unone.showcase.symptoms":
+    "Describe symptoms in your words or by voice; get severity and red flags.",
+  "unone.showcase.advisory":
+    "A combined, safe health advisory with a lifestyle and diet plan.",
   "unone.consentRequired": "Please grant consent to continue.",
   "unone.consentLab": "I consent to AI analysis of my lab report.",
   "unone.consentCamera": "I consent to a camera vital scan on this device.",
