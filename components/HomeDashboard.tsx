@@ -3,6 +3,7 @@
 import Image from "next/image";
 import {
   Activity,
+  BrainCircuit,
   Camera,
   FileText,
   HeartPulse,
@@ -34,6 +35,7 @@ import { OCRVerificationCard } from "./OCRVerificationCard";
 import { ResultScreen } from "./ResultScreen";
 import { RiskCheckWizard } from "./RiskCheckWizard";
 import { SafetyDisclaimer } from "./SafetyDisclaimer";
+import { UnoOneHealthView } from "./unone-health/UnoOneHealthView";
 
 interface HomeDashboardProps {
   language: Language;
@@ -69,6 +71,12 @@ const moduleCards = [
     titleKey: "card.referral.title",
     descriptionKey: "card.referral.description",
     tab: "report",
+  },
+  {
+    icon: BrainCircuit,
+    titleKey: "unone.title",
+    descriptionKey: "unone.subtitle",
+    tab: "ai",
   },
 ] as const;
 
@@ -607,6 +615,10 @@ export function HomeDashboard({
           ) : null}
           <SafetyDisclaimer language={language} />
         </div>
+      ) : null}
+
+      {activeTab === "ai" ? (
+        <UnoOneHealthView language={language} online={online} />
       ) : null}
     </main>
   );

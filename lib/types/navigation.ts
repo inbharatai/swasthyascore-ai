@@ -1,1 +1,1 @@
-export type AppTab = "home" | "risk" | "camera" | "lab" | "report";
+export type AppTab = "home" | "risk" | "camera" | "lab" | "report" | "ai";
