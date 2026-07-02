@@ -5,6 +5,7 @@ import { uuid, isoNow } from "@/modules/unone-health/core/id";
 import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 /**

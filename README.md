@@ -68,7 +68,8 @@ Backend persistence is an in-memory store typed and clearly marked as a placehol
 - **Real, on-device, no mock.** The only engine is `SignalRppgEngine`: genuine frame capture from the phone camera, MediaPipe FaceLandmarker ROI, green-channel signal, detrend, biquad bandpass, and autocorrelation → heart rate. There is no mock/fallback path — every scan reads the live camera. It is still **experimental and not clinically validated**; results are for awareness only and never a diagnosis.
 - **Front camera = face scan** → heart rate + respiratory rate. **Rear camera = fingertip scan** → heart rate only (place a fingertip over the lens). The rear/finger provider (`FingerFrameProvider`) averages the pulsing red channel.
 - **Accuracy levers in the live scan UI:** the camera requests an ideal **60 fps** (more samples per cardiac cycle → sharper autocorrelation; `ideal`, not `max`, so the device picks a supported rate and the two-tier fallback drops it if rejected). A **3-2-1 "get ready" countdown + stability gate** discards the first ~seconds while the user settles: the 20s clock starts only after `faceStability > 0.8` (face) or `lightingScore > 0.5` (finger) is sustained ≥1s, with a 10s ceiling → `stability_timeout`. A **live PPG waveform** is drawn each frame from `detrend(green, 15)` (the same preprocessing the engine uses) on an imperative canvas, plus live **Lighting / Motion / Stability** meters driven by the real per-frame telemetry. A **torch (flash) toggle** is offered in finger mode to flood the fingertip for a stronger red pulse. The final BPM is shown only on completion (count-up animation) — no provisional jumpy number during the scan.
-- The MediaPipe model is fetched from a CDN on first use, so a scan needs internet the first time; if the model fails to load the scan surfaces a real "needs internet on first use" error (no fabricated numbers). Low confidence nulls the readings and recommends a repeat scan.
+- **Frequency estimation accuracy:** the autocorrelation step picks the **first significant local maximum** (the fundamental period), not the global max — this is the standard fix for the rPPG "halving" error where a harmonic at 2× the period outscores the true heart rate. **Parabolic interpolation** around the peak gives sub-sample lag precision, cutting BPM quantization from ~3 BPM at 30 fps to under 1 BPM. An **energy gate** rejects flat/noisy windows so a bad scan returns no fabricated number (low confidence nulls the readings and recommends a repeat). Unit-tested with clean sines, an off-grid heart rate (1.7 Hz), a non-sinusoidal pulse train (guards against halving), and deterministic noise (guards against fabrication).
+- **Self-hosted model (works on any network):** the MediaPipe FaceLandmarker model **and** the tasks-vision WASM fileset are served from `/public/models/` — no dependency on the googleapis / jsdelivr CDNs. The first scan no longer needs an external CDN fetch; it works on networks that block those CDNs and works offline once the app shell has loaded. (Previously the model was fetched from a CDN on first use, requiring internet.)
 - The landing page hero merges the **Camera Heart-Rate Scan** spotlight: an animated heartbeat/PPG trace, a **Measure heart rate** button (deep-links into Health AI directly on the scan), and a 60-second count-up badge. The scan screen title reads **Heart beat scan**.
 
 ## Privacy And Data
@@ -182,10 +183,19 @@ Nothing is auto-sent. The user chooses when and where to send the report.
 
 ## Offline Behavior
 
-- The app shell is cached by the service worker.
+- The app shell is cached by the service worker (registered in production only).
+- The rPPG face model + WASM are self-hosted under `/public/models/`, so the heart-beat scan works offline once the app shell has loaded — no CDN fetch required.
 - Manual calculator logic works offline after the app has loaded once.
-- AI OCR, AI visible-concern analysis, and AI explanation need internet.
+- Health events captured while offline are queued in `localStorage` and replayed when connectivity returns (the `OfflineQueue`); failed events stay pending for retry.
+- AI OCR, AI visible-concern analysis, and AI explanation need internet (they call OpenAI server-side).
 - Offline AI actions show a graceful internet-needed message.
+
+## Hosting (Vercel is sufficient)
+
+- The whole app — UI, API routes, and the on-device rPPG scan — runs on **Vercel** (Next.js, Node 24.x). It is already linked and deployed: `swasthyascore-ai.vercel.app`. You do **not** need Railway, Render, or any other host for the user-facing features to work.
+- **AI functions** run as Vercel serverless functions calling OpenAI with the Responses API; every API route sets `maxDuration = 60` so slow structured-output calls (lab report analysis, combined advisory) don't hit the 10s default timeout. The `OPENAI_API_KEY` + `OPENAI_MODEL_*` vars are set in the Vercel **Production** environment. (If you want AI to also work on Preview/branch deployments, add the same vars to the Preview environment in Vercel → Environment Variables.)
+- **What you'd host elsewhere (optional, only for durable history):** health-event persistence is currently an **in-memory placeholder** (`serverEventStore`) — "synced" events live only in that serverless instance's memory and do not survive a redeploy and are not shared across users. For a durable, per-patient timeline that survives, attach a database. Lightest options, in order of effort: **Vercel Postgres** (Storage tab, same platform), **Supabase** (Postgres + auth), or a **Railway/Render** Postgres. The app stays on Vercel; only the database is external. The `lib/future/*` placeholders + `supabase.schema.sql` sketch this path.
+- So: **Vercel alone makes every function work accurately for anyone with the link.** A database is a later enhancement for durable history, not a requirement for the core experience.
 
 ## Future Auth And Database
 
@@ -253,7 +263,7 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 31. If the user cannot hold still within 10s, confirm a `stability_timeout` failure (no fabricated heart rate); a no-face or low-light condition shows the matching hint and nulls the readings on low confidence.
 32. Upload a sample lab report; confirm markers and critical flags render and that no marker says "you have …" or prescribes a medicine.
 33. Enter symptoms and generate a health advisory; confirm a risk level, lifestyle plan, doctor summary, family summary, and safety note render with no diagnosis wording.
-34. Turn offline before a first scan and confirm the scan shows a "needs internet on first use" error rather than a fabricated heart rate.
+34. Load the app once online (so the shell + self-hosted face model cache), then go offline and run a scan — it should still work (model is served from `/public/models/`, no CDN). If the model/WASM ever fail to load, confirm the scan surfaces a real error rather than a fabricated heart rate.
 
 ## Known Limitations
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { reviewExplanationSafety } from "@/lib/ai/SafetyReviewAgent";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const safetyReviewRequestSchema = z.object({

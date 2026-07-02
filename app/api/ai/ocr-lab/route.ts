@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { extractLabValuesFromImage } from "@/lib/ai/LabOCRAgent";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {

@@ -3,6 +3,7 @@ import { serverEventStore } from "@/modules/unone-health/adapters/swasthyak-adap
 import { serverError } from "@/modules/unone-health/core/routeErrors";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 type RouteContext = {

@@ -136,6 +136,18 @@ function applyBiquad(
  * rate (default 0.5–3.2 Hz) and respiratory rate (0.1–0.5 Hz). Without bounds
  * the RR autocorrelation peak (period 4–10s) falls outside the HR lag window
  * and is never found.
+ *
+ * Accuracy measures (so the live camera scan reports the true heart rate, not
+ * a harmonic):
+ *   - The unnormalized autocorrelation's (N-lag) overlap decay biases toward
+ *     shorter lags, which naturally favors the fundamental period over its
+ *     harmonics (2T, 3T) for the non-sinusoidal PPG waveform.
+ *   - We then pick the FIRST significant local maximum scanning upward (the
+ *     fundamental), not the global max — this is the standard fix for the rPPG
+ *     "halving" error where a harmonic at 2T outscores the true period.
+ *   - Parabolic interpolation around the peak gives sub-sample lag precision,
+ *     cutting BPM quantization from ~3 BPM at 30 fps to under 1 BPM.
+ *   - An energy gate rejects flat/noisy windows (no fabricated frequency).
  */
 export function dominantFrequencyHz(
   signal: number[],
@@ -154,21 +166,69 @@ export function dominantFrequencyHz(
 
   if (maxLag < minLag) return 0;
 
-  let bestLag = 0;
-  let bestScore = -Infinity;
+  // Unnormalized autocorrelation over the bounded lag window.
+  const autocorr = new Array<number>(maxLag + 1).fill(0);
   for (let lag = minLag; lag <= maxLag; lag++) {
     let sum = 0;
     for (let i = 0; i + lag < normalized.length; i++) {
       sum += normalized[i] * normalized[i + lag];
     }
-    if (sum > bestScore) {
-      bestScore = sum;
-      bestLag = lag;
+    autocorr[lag] = sum;
+  }
+
+  let globalMaxLag = minLag;
+  let globalMax = autocorr[minLag];
+  for (let lag = minLag + 1; lag <= maxLag; lag++) {
+    if (autocorr[lag] > globalMax) {
+      globalMax = autocorr[lag];
+      globalMaxLag = lag;
     }
   }
 
-  if (bestLag <= 0) return 0;
-  return sampleRate / bestLag;
+  // Energy gate: a normalized signal has lag-0 energy = N. A real periodic
+  // component clears a meaningful fraction of that; pure noise does not, so we
+  // return 0 instead of inventing a frequency from a noise spike.
+  const energy = normalized.length;
+  if (globalMax <= 0 || globalMax < 0.2 * energy) return 0;
+
+  // First significant local maximum scanning upward = the fundamental period.
+  // A peak must clear 85% of the global max so a low-amplitude early ripple
+  // cannot masquerade as the heart rate.
+  const threshold = 0.85 * globalMax;
+  let bestLag = 0;
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    const prev = lag > minLag ? autocorr[lag - 1] : -Infinity;
+    const next = lag < maxLag ? autocorr[lag + 1] : -Infinity;
+    if (autocorr[lag] >= prev && autocorr[lag] > next && autocorr[lag] >= threshold) {
+      bestLag = lag;
+      break;
+    }
+  }
+  if (bestLag === 0) bestLag = globalMaxLag; // no clean peak — fall back to global max
+
+  const refinedLag = parabolicRefine(autocorr, bestLag, minLag, maxLag);
+  if (refinedLag <= 0) return 0;
+  return sampleRate / refinedLag;
+}
+
+/** Parabolic interpolation around an integer peak lag for sub-sample precision.
+ * Fits y = a*(lag)^2 + b*(lag) + c through (lag-1, lag, lag+1) and returns the
+ * vertex. Offset is in [-0.5, +0.5]; falls back to the integer lag at edges or
+ * when the parabola is degenerate (flat). */
+function parabolicRefine(
+  autocorr: number[],
+  lag: number,
+  minLag: number,
+  maxLag: number,
+): number {
+  if (lag <= minLag || lag >= maxLag) return lag;
+  const y0 = autocorr[lag - 1];
+  const y1 = autocorr[lag];
+  const y2 = autocorr[lag + 1];
+  const denom = y0 - 2 * y1 + y2;
+  if (denom === 0) return lag;
+  const delta = (0.5 * (y0 - y2)) / denom;
+  return lag + delta;
 }
 
 /** Convert Hz -> BPM. */

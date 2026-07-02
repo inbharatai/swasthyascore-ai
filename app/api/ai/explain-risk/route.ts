@@ -5,6 +5,7 @@ import { riskExplanationApiSchema } from "@/lib/ai/schemas";
 import { translate } from "@/lib/i18n";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const explainRiskRequestSchema = z.object({

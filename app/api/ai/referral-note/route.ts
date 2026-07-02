@@ -4,6 +4,7 @@ import { generateReferralNote } from "@/lib/ai/ReferralNoteAgent";
 import { translate } from "@/lib/i18n";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const referralRequestSchema = z.object({

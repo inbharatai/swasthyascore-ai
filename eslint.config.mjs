@@ -13,6 +13,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static assets served as-is — includes vendored MediaPipe WASM JS/glue
+    // code (auto-generated, not meant to be linted).
+    "public/**",
   ]),
 ]);
 

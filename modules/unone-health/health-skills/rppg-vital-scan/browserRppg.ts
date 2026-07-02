@@ -15,10 +15,11 @@
 import type { RppgEngine, RppgScanParams, RppgScanSamples, RppgFrameSample } from "./engine";
 import { aggregateFrameSamples } from "./engine";
 
-const WASM_PATH =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
-const FACE_MODEL_PATH =
-  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+// Self-hosted (in /public) so the first rPPG scan works on any network without
+// depending on googleapis / jsdelivr CDNs (which are blocked on some networks
+// and required an online first run previously). Served statically by Vercel.
+const WASM_PATH = "/models/wasm";
+const FACE_MODEL_PATH = "/models/face_landmarker.task";
 
 type Landmark = { x: number; y: number; z?: number; visibility?: number };
 type FaceLandmarker = {

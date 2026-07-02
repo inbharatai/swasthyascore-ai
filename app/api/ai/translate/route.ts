@@ -8,6 +8,7 @@ import type { AiExplanationResult } from "@/lib/types/health";
 import { translate } from "@/lib/i18n";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const translateRequestSchema = z.object({

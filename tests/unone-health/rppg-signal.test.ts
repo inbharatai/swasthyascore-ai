@@ -57,6 +57,48 @@ describe("dominantFrequencyHz", () => {
     expect(rrHz).toBeCloseTo(0.2, 1);
     expect(Math.round(rrHz * 60)).toBe(12);
   });
+
+  it("reports the fundamental, not a harmonic, for a pulse-train PPG waveform", () => {
+    // A non-sinusoidal PPG (sharp systolic upstroke) has autocorrelation peaks
+    // at every multiple of the period. The estimator must return the fundamental
+    // (1.5 Hz / 90 BPM), not half (0.75 Hz — the classic halving error) or double.
+    const period = 20; // 30 fps / 20 = 1.5 Hz
+    const n = 600;
+    const pulses: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const phase = i % period;
+      const d = Math.min(phase, period - phase); // distance to nearest pulse
+      pulses.push(128 + Math.exp(-(d * d) / 2) * 3);
+    }
+    const hz = dominantFrequencyHz(pulses, SAMPLE_RATE);
+    expect(hz).toBeCloseTo(1.5, 1);
+    expect(hzToBpm(hz)).toBe(90);
+  });
+
+  it("uses sub-sample (parabolic) precision so off-grid heart rates are accurate", () => {
+    // 1.7 Hz at 30 fps -> period 17.65 samples (not an integer lag). Without
+    // parabolic interpolation the nearest integer lag (17) gives 30/17 = 1.765
+    // Hz (off by ~0.065 Hz / ~4 BPM). Parabolic refinement must land within
+    // 0.05 Hz of the true 1.7 Hz.
+    const hz = dominantFrequencyHz(sine(1.7, 600, 1), SAMPLE_RATE);
+    expect(Math.abs(hz - 1.7)).toBeLessThan(0.05);
+    expect(hzToBpm(hz)).toBe(102);
+  });
+
+  it("returns 0 for a pulse-less / noise window (no fabricated frequency)", () => {
+    // Deterministic white-ish noise via an LCG (no Math.random flakiness). The
+    // energy gate must reject it — a noisy window must never invent a heart rate.
+    const noise: number[] = [];
+    let state = 1234567;
+    for (let i = 0; i < 600; i++) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      noise.push((state / 0x7fffffff - 0.5) * 100);
+    }
+    expect(dominantFrequencyHz(noise, SAMPLE_RATE)).toBe(0);
+
+    // A flat line is also pulse-less.
+    expect(dominantFrequencyHz(new Array(300).fill(128), SAMPLE_RATE)).toBe(0);
+  });
 });
 
 function variance(signal: number[]): number {
