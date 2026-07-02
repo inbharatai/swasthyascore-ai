@@ -11,6 +11,9 @@ import { healthAdvisorySchema } from "@/modules/unone-health/core/types";
 import { uuid } from "@/modules/unone-health/core/id";
 import { sanitizeUnsafeWording, SAFETY_NOTE } from "@/modules/unone-health/core/safety";
 import { generateHealthAdvisory } from "./HealthAdvisoryAgent";
+import { deriveAdvisoryConfidence } from "./confidence";
+
+export { deriveAdvisoryConfidence } from "./confidence";
 
 const profileSchema = z.object({
   age: z.number().optional(),
@@ -78,7 +81,19 @@ export function createGeneratePlanTool(): ToolDescriptor {
         patient_id: context.patientId,
         source: "openai_5_5",
         event_type: "health_advisory",
-        confidence: 0.8,
+        confidence: deriveAdvisoryConfidence({
+          profile: {
+            age: data.profile.age,
+            sex: data.profile.sex,
+            bmi: data.profile.bmi,
+          },
+          labReport: data.lab_report,
+          vitals: data.vitals,
+          symptoms: data.symptoms as {
+            severity?: string | null;
+            red_flags?: string[] | null;
+          } | null,
+        }),
         payload: safe as unknown as Record<string, unknown>,
         privacy: {
           consent_given: true,

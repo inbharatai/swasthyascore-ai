@@ -101,6 +101,35 @@ describe("dominantFrequencyHz", () => {
   });
 });
 
+describe("dominantFrequencyHz — minPeakEnergyRatio (RR gate)", () => {
+  it("accepts a clean respiratory signal (0.25 Hz / 15 rpm) under the stricter 0.35 gate", () => {
+    // 20s at 30fps. A real 0.25 Hz breath signal has a strong autocorrelation
+    // peak that clears even the strict gate used by estimateRespiratoryRate.
+    const hz = dominantFrequencyHz(sine(0.25, 600, 1), SAMPLE_RATE, 0.1, 0.5, 0.35);
+    expect(hz).toBeCloseTo(0.25, 1);
+    expect(Math.round(hz * 60)).toBe(15);
+  });
+
+  it("rejects noise in the RR band under the 0.35 gate (no fabricated breath rate)", () => {
+    const noise: number[] = [];
+    let state = 7654321;
+    for (let i = 0; i < 600; i++) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      noise.push((state / 0x7fffffff - 0.5) * 50);
+    }
+    expect(dominantFrequencyHz(noise, SAMPLE_RATE, 0.1, 0.5, 0.35)).toBe(0);
+  });
+
+  it("honours the ratio: a gate of 0.99 rejects even a clean tone", () => {
+    // A finite window's autocorrelation peak is always below 1.0 * energy, so
+    // an absurdly strict gate must reject everything. This proves the param
+    // actually gates acceptance (and that the default 0.2 is what lets a clean
+    // tone through elsewhere).
+    const clean = sine(1.5, 300, 1);
+    expect(dominantFrequencyHz(clean, SAMPLE_RATE, 0.5, 3.2, 0.99)).toBe(0);
+  });
+});
+
 function variance(signal: number[]): number {
   if (signal.length === 0) return 0;
   const mean = signal.reduce((a, b) => a + b, 0) / signal.length;

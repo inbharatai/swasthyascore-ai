@@ -150,3 +150,62 @@ describe("rPPG low confidence + fail policy", () => {
     expect(result.repeat_scan_recommended).toBe(true);
   });
 });
+
+describe("rPPG respiratory-rate accuracy + noise rejection", () => {
+  it("recovers a 0.25 Hz (15 rpm) respiratory signal overlaid on the HR trace", () => {
+    // 1.2 Hz HR + 0.25 Hz breathing, 20s. The 0.1–0.5 Hz bandpass must isolate
+    // the breath component and the stricter 0.35 energy gate must still accept it.
+    const frames: RppgFrameSample[] = [];
+    const n = FPS * 20;
+    for (let i = 0; i < n; i++) {
+      const t = i / FPS;
+      frames.push({
+        greenMean:
+          128 +
+          Math.sin(2 * Math.PI * 1.2 * t) * 0.06 +
+          Math.sin(2 * Math.PI * 0.25 * t) * 0.05,
+        timestampMs: Math.round(t * 1000),
+        faceStability: 0.9,
+        motionScore: 0.9,
+        lightingScore: 0.9,
+        leftRightConsistency: 0.9,
+      });
+    }
+    const result = finalizeVitalScan(
+      aggregateFrameSamples(frames),
+      { cameraMode: "front_face", durationSeconds: 20 },
+      "signal",
+      FIXED_NOW,
+    );
+    expect(result.respiratory_rate_bpm).not.toBeNull();
+    expect(result.respiratory_rate_bpm!).toBeGreaterThanOrEqual(12);
+    expect(result.respiratory_rate_bpm!).toBeLessThanOrEqual(18);
+  });
+
+  it("rejects a noisy trace: HR and RR both null (no fabricated rates)", () => {
+    // LCG noise + good-quality scores — the energy gates (HR 0.2, RR 0.35) must
+    // both reject, so neither rate is invented. This is the end-to-end guard.
+    const frames: RppgFrameSample[] = [];
+    let state = 424242;
+    const n = FPS * 20;
+    for (let i = 0; i < n; i++) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      frames.push({
+        greenMean: 128 + (state / 0x7fffffff - 0.5) * 20,
+        timestampMs: Math.round((i / FPS) * 1000),
+        faceStability: 0.9,
+        motionScore: 0.9,
+        lightingScore: 0.9,
+        leftRightConsistency: 0.9,
+      });
+    }
+    const result = finalizeVitalScan(
+      aggregateFrameSamples(frames),
+      { cameraMode: "front_face", durationSeconds: 20 },
+      "signal",
+      FIXED_NOW,
+    );
+    expect(result.heart_rate_bpm).toBeNull();
+    expect(result.respiratory_rate_bpm).toBeNull();
+  });
+});

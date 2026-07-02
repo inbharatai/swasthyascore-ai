@@ -14,6 +14,7 @@
  */
 import type { RppgEngine, RppgScanParams, RppgScanSamples, RppgFrameSample } from "./engine";
 import { aggregateFrameSamples } from "./engine";
+import { computeFingerSignalQuality, FINGER_WINDOW } from "./fingerSignal";
 
 // Self-hosted (in /public) so the first rPPG scan works on any network without
 // depending on googleapis / jsdelivr CDNs (which are blocked on some networks
@@ -299,24 +300,39 @@ export class FaceRoiFrameProvider {
 }
 
 /**
- * Finger-over-rear-camera provider. No face ROI — averages the whole frame's
- * red channel (the fingertip pressed over the flash floods the frame with a
- * pulsing red signal). Heart-rate only; respiratory rate is never claimed.
+ * Finger-over-rear-camera provider. No face ROI — averages a center crop's red
+ * channel (the fingertip pressed over the lens floods the frame with a pulsing
+ * red signal). Heart-rate only; respiratory rate is never claimed.
+ *
+ * Per-frame quality is REAL, not faked: a rolling buffer of recent red means
+ * drives `computeFingerSignalQuality` (frame-to-frame motion, delta-variance
+ * stability, AC/DC pulsatility, DC-band lighting). Pulsatility is carried in
+ * `leftRightConsistency` so the existing 15% confidence weight measures true
+ * PPG signal strength for finger mode (face mode uses it for cheek consistency).
  */
 export class FingerFrameProvider {
+  private readonly recentReds: number[] = [];
+  private prevRed: number | null = null;
+  private canvas: HTMLCanvasElement | null = null;
+
   constructor(private readonly video: HTMLVideoElement) {}
 
   sample(): RppgFrameSample | null {
     const w = this.video.videoWidth;
     const h = this.video.videoHeight;
     if (!w || !h) return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
+
+    // Reuse one canvas (the face provider does the same) — allocating a fresh
+    // canvas every frame at 60fps is a real GC/pressure cost.
+    if (!this.canvas) this.canvas = document.createElement("canvas");
+    const canvas = this.canvas;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return null;
     ctx.drawImage(this.video, 0, 0, w, h);
-    // Sample a center crop for speed.
+
+    // Center crop for speed; a fingertip-over-lens frame is uniformly red.
     const cx = Math.round(w * 0.35);
     const cy = Math.round(h * 0.35);
     const cw = Math.round(w * 0.3);
@@ -335,20 +351,38 @@ export class FingerFrameProvider {
       return null;
     }
     if (!count) return null;
+
+    const redMean = sum / count;
     const brightness = bright / count / 3;
-    const lightingScore = brightness > 90 ? 0.85 : 0.3;
+
+    // Rolling buffer for the quality metrics.
+    this.recentReds.push(redMean);
+    if (this.recentReds.length > FINGER_WINDOW) this.recentReds.shift();
+
+    const q = computeFingerSignalQuality({
+      recentReds: this.recentReds,
+      prevRed: this.prevRed,
+      brightness,
+    });
+    this.prevRed = redMean;
+
     return {
-      greenMean: sum / count,
+      // Carried in `greenMean` (the pipeline's generic channel-mean field) —
+      // for finger mode this is the RED mean, which is the correct channel.
+      greenMean: redMean,
       timestampMs: performance.now(),
-      faceStability: 0.8,
-      motionScore: 0.9,
-      lightingScore,
-      leftRightConsistency: 0.8,
+      faceStability: q.stability,
+      motionScore: q.motionScore,
+      lightingScore: q.lightingScore,
+      // Repurposed as AC/DC pulsatility for finger mode (see class doc).
+      leftRightConsistency: q.pulsatility,
     };
   }
 
   release(): void {
-    // no landmarker to close
+    this.recentReds.length = 0;
+    this.prevRed = null;
+    this.canvas = null;
   }
 }
 

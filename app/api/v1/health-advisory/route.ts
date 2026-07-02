@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { HealthEvent } from "@/modules/unone-health/core/types";
 import { generateHealthAdvisory } from "@/modules/unone-health/health-skills/lifestyle-plan/HealthAdvisoryAgent";
-import { enforceHealthAdvisorySafety } from "@/modules/unone-health/health-skills/lifestyle-plan";
+import {
+  enforceHealthAdvisorySafety,
+  deriveAdvisoryConfidence,
+} from "@/modules/unone-health/health-skills/lifestyle-plan";
 import { serverEventStore } from "@/modules/unone-health/adapters/swasthyak-adapter/serverStore";
 import { uuid, isoNow } from "@/modules/unone-health/core/id";
 import { serverError } from "@/modules/unone-health/core/routeErrors";
@@ -66,7 +69,19 @@ export async function POST(request: Request) {
       patient_id: body.patient_id,
       source: "openai_5_5",
       event_type: "health_advisory",
-      confidence: 0.8,
+      confidence: deriveAdvisoryConfidence({
+        profile: {
+          age: body.profile?.age,
+          sex: body.profile?.sex,
+          bmi: body.profile?.bmi,
+        },
+        labReport: body.lab_report,
+        vitals: body.vitals,
+        symptoms: body.symptoms as {
+          severity?: string | null;
+          red_flags?: string[] | null;
+        } | null,
+      }),
       payload: safe as unknown as Record<string, unknown>,
       privacy: {
         consent_given: true,

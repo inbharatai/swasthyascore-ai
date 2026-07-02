@@ -9,6 +9,7 @@ import {
   dominantFrequencyHz,
   hzToBpm,
   signalQualityScore,
+  estimateRespiratoryRateRpm,
 } from "./signal";
 
 /**
@@ -153,11 +154,11 @@ function estimateHeartRate(samples: RppgScanSamples): number | null {
 }
 
 function estimateRespiratoryRate(samples: RppgScanSamples): number | null {
-  if (samples.green.length < 16 || samples.sampleRate <= 0) return null;
-  const detrended = detrend(samples.green, 31);
-  const filtered = bandpass(detrended, samples.sampleRate, 0.1, 0.5);
-  const hz = dominantFrequencyHz(filtered, samples.sampleRate, 0.1, 0.5);
-  const rpm = Math.round(hz * 60);
-  if (rpm < 8 || rpm > 40) return null;
-  return rpm;
+  // Delegates to the pure `estimateRespiratoryRateRpm` (mean-remove + cascaded
+  // bandpass + warmup trim + global-max autocorrelation + band-power share
+  // gate). See signal.ts for why each step is needed — the previous
+  // detrend(window=31) approach was a high-pass that destroyed the 0.1–0.5 Hz
+  // breath band before the bandpass ever saw it, and the first-significant
+  // peak rule locked onto heart-rate leakage at ~0.4 Hz.
+  return estimateRespiratoryRateRpm(samples.green, samples.sampleRate);
 }

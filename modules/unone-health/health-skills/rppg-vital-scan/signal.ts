@@ -154,8 +154,27 @@ export function dominantFrequencyHz(
   sampleRate: number,
   minHz = 0.5,
   maxHz = 3.2,
+  /**
+   * Fraction of the lag-0 energy the autocorrelation peak must clear to be
+   * accepted. Default 0.2 (heart-rate band). Respiratory-rate estimation
+   * passes a stricter 0.35 because a 20s window holds only ~2–5 breath
+   * cycles, so slow drift / motion artefacts can otherwise masquerade as a
+   * plausible 0.1–0.5 Hz peak.
+   */
+  minPeakEnergyRatio = 0.2,
+  /**
+   * When true, pick the GLOBAL maximum lag (parabolic-refined) instead of the
+   * first significant local maximum. Used for respiratory-rate estimation: RR
+   * is borderline over 20s and its autocorrelation has spurious early peaks
+   * from heart-rate leakage, so the first-significant rule mis-locks onto a
+   * 0.3–0.4 Hz phantom. The global max is the unambiguous dominant period.
+   * Heart-rate estimation keeps the first-significant rule (it prevents the
+   * classic halving error where the 2T harmonic outscores the fundamental).
+   */
+  useGlobalMax = false,
 ): number {
   if (signal.length < 8 || sampleRate <= 0 || maxHz <= 0 || minHz <= 0) return 0;
+  if (minPeakEnergyRatio <= 0) return 0;
 
   const normalized = normalize(signal);
   const maxLag = Math.min(
@@ -189,22 +208,31 @@ export function dominantFrequencyHz(
   // component clears a meaningful fraction of that; pure noise does not, so we
   // return 0 instead of inventing a frequency from a noise spike.
   const energy = normalized.length;
-  if (globalMax <= 0 || globalMax < 0.2 * energy) return 0;
+  if (globalMax <= 0 || globalMax < minPeakEnergyRatio * energy) return 0;
 
-  // First significant local maximum scanning upward = the fundamental period.
-  // A peak must clear 85% of the global max so a low-amplitude early ripple
-  // cannot masquerade as the heart rate.
-  const threshold = 0.85 * globalMax;
-  let bestLag = 0;
-  for (let lag = minLag; lag <= maxLag; lag++) {
-    const prev = lag > minLag ? autocorr[lag - 1] : -Infinity;
-    const next = lag < maxLag ? autocorr[lag + 1] : -Infinity;
-    if (autocorr[lag] >= prev && autocorr[lag] > next && autocorr[lag] >= threshold) {
-      bestLag = lag;
-      break;
+  let bestLag: number;
+  if (useGlobalMax) {
+    // RR path: the global max is the unambiguous dominant period. The
+    // first-significant rule would mis-lock onto an early heart-rate-leakage
+    // peak (~0.3–0.4 Hz) that scores ~90% of the true breath peak.
+    bestLag = globalMaxLag;
+  } else {
+    // HR path: first significant local maximum scanning upward = the
+    // fundamental period. A peak must clear 85% of the global max so a
+    // low-amplitude early ripple cannot masquerade as the heart rate (and a
+    // 2T harmonic cannot cause the classic halving error).
+    const threshold = 0.85 * globalMax;
+    let firstSig = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      const prev = lag > minLag ? autocorr[lag - 1] : -Infinity;
+      const next = lag < maxLag ? autocorr[lag + 1] : -Infinity;
+      if (autocorr[lag] >= prev && autocorr[lag] > next && autocorr[lag] >= threshold) {
+        firstSig = lag;
+        break;
+      }
     }
+    bestLag = firstSig !== 0 ? firstSig : globalMaxLag; // no clean peak — fall back
   }
-  if (bestLag === 0) bestLag = globalMaxLag; // no clean peak — fall back to global max
 
   const refinedLag = parabolicRefine(autocorr, bestLag, minLag, maxLag);
   if (refinedLag <= 0) return 0;
@@ -245,4 +273,83 @@ export function signalQualityScore(filtered: number[]): number {
   const std = Math.sqrt(variance);
   // Empirical mapping: a healthy PPG-like AC component lands ~0.05-0.3 here.
   return Math.max(0, Math.min(1, std * 4));
+}
+
+/** Population variance (0 for empty / flat signals). */
+export function varianceOf(signal: number[]): number {
+  if (signal.length === 0) return 0;
+  const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
+  return signal.reduce((a, b) => a + (b - mean) * (b - mean), 0) / signal.length;
+}
+
+/**
+ * Estimate respiratory rate (breaths/min) from a PPG green-channel trace.
+ *
+ * Why this is NOT just `dominantFrequencyHz(green, 0.1, 0.5)`:
+ *
+ *  1. **DC removal, not detrend.** The shared `detrend` is a moving-average
+ *     HIGH-PASS: with its default 15–31 sample window it removes everything
+ *     slower than ~1 Hz — i.e. it annihilates the 0.1–0.5 Hz breath band
+ *     before the bandpass ever sees it. A simple mean subtraction kills DC
+ *     while preserving the slow respiratory modulation.
+ *
+ *  2. **Cascaded bandpass.** Two 0.1–0.5 Hz biquads in series give a steeper
+ *     roll-off so the 1–2 Hz heart-rate fundamental (which is 5–10× stronger
+ *     in a PPG) leaks far less into the respiratory band.
+ *
+ *  3. **Warmup trim.** IIR filters ring for ~1.5 s before settling; we drop
+ *     that prefix so the autocorrelation isn't dominated by the transient.
+ *
+ *  4. **Global-max peak selection.** Over a 20 s window RR is borderline (only
+ *     ~2–5 cycles) and the autocorrelation has spurious early peaks from
+ *     residual HR leakage. The first-significant rule (used for HR) locks onto
+ *     those; the global max is the true dominant period. Parabolic refinement
+ *     still gives sub-sample lag precision.
+ *
+ *  5. **Band-power share gate.** A genuine breath signal must carry a
+ *     meaningful fraction of the total physiological power in the trace. We
+ *     compute RR-band vs HR-band power and require `rrP / (rrP + hrP) >= 0.2`.
+ *     This is the guard against fabrication: a heart-only trace (no breathing
+ *     modulation) or pure noise returns null instead of inventing a breath
+ *     rate from filter ringing or a noise spike.
+ *
+ * Returns breaths/min rounded, or null when no trustworthy respiratory
+ * component is present. EXPERIMENTAL — not clinically validated.
+ */
+export function estimateRespiratoryRateRpm(
+  green: number[],
+  sampleRate: number,
+): number | null {
+  if (green.length < 16 || sampleRate <= 0) return null;
+
+  // (1) DC removal — preserves the slow breath band that `detrend` would kill.
+  const dc = green.reduce((a, b) => a + b, 0) / green.length;
+  const x = green.map((v) => v - dc);
+
+  // (2) Cascaded 0.1–0.5 Hz bandpass for steeper HR rejection.
+  const rrBandRaw = bandpass(bandpass(x, sampleRate, 0.1, 0.5), sampleRate, 0.1, 0.5);
+  const hrBandRaw = bandpass(x, sampleRate, 0.75, 3.0);
+
+  // (3) Trim the IIR warmup so the filter transient doesn't dominate.
+  const warmup = Math.floor(sampleRate * 1.5);
+  const rrBand = warmup > 0 && warmup < rrBandRaw.length ? rrBandRaw.slice(warmup) : rrBandRaw;
+  const hrBand = warmup > 0 && warmup < hrBandRaw.length ? hrBandRaw.slice(warmup) : hrBandRaw;
+
+  // (5) Band-power share gate: a real breath must carry >=20% of the
+  // physiological power. HR-only and noise traces are rejected here.
+  const rrP = varianceOf(rrBand);
+  const hrP = varianceOf(hrBand);
+  const total = rrP + hrP;
+  const share = total > 0 ? rrP / total : 0;
+  if (share < 0.2) return null;
+
+  // (4) Global-max autocorrelation in the respiratory band, with the strict
+  // 0.35 energy gate (a 20 s window holds few breath cycles — drift/motion
+  // must not masquerade as a plausible 0.1–0.5 Hz peak).
+  const hz = dominantFrequencyHz(rrBand, sampleRate, 0.1, 0.5, 0.35, true);
+  if (hz <= 0) return null;
+
+  const rpm = Math.round(hz * 60);
+  if (rpm < 8 || rpm > 40) return null; // physiological plausibility
+  return rpm;
 }
