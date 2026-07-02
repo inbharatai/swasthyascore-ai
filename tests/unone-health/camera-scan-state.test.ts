@@ -79,4 +79,46 @@ describe("camera scan state machine", () => {
     const synced = reduce({ type: "synced" });
     expect(synced.status).toBe("synced");
   });
+
+  it("begins the 3-2-1 countdown only after consent", () => {
+    // Without consent the countdown never starts (no silent scan kickoff).
+    const blocked = cameraScanReducer(initialCameraScanState, { type: "begin_countdown" });
+    expect(blocked.status).toBe("idle");
+    expect(blocked.countdownRemaining).toBe(0);
+
+    const granted = cameraScanReducer(initialCameraScanState, { type: "grant_consent" });
+    const counting = cameraScanReducer(granted, { type: "begin_countdown" });
+    expect(counting.status).toBe("countdown");
+    expect(counting.countdownRemaining).toBe(3);
+    expect(counting.result).toBeNull();
+    expect(counting.error).toBeNull();
+  });
+
+  it("ticks the countdown down only while in the countdown status", () => {
+    const granted = cameraScanReducer(initialCameraScanState, { type: "grant_consent" });
+    const counting = cameraScanReducer(granted, { type: "begin_countdown" });
+
+    const two = cameraScanReducer(counting, { type: "countdown_tick", remaining: 2 });
+    expect(two.status).toBe("countdown");
+    expect(two.countdownRemaining).toBe(2);
+
+    const one = cameraScanReducer(two, { type: "countdown_tick", remaining: 1 });
+    expect(one.countdownRemaining).toBe(1);
+
+    // A tick outside of countdown is ignored (cannot resurrect the countdown).
+    const idleTick = cameraScanReducer(initialCameraScanState, {
+      type: "countdown_tick",
+      remaining: 2,
+    });
+    expect(idleTick).toBe(initialCameraScanState);
+  });
+
+  it("routes a stability timeout to failed with an explicit error", () => {
+    const granted = cameraScanReducer(initialCameraScanState, { type: "grant_consent" });
+    const counting = cameraScanReducer(granted, { type: "begin_countdown" });
+    const timedOut = cameraScanReducer(counting, { type: "stability_timeout" });
+    expect(timedOut.status).toBe("failed");
+    expect(timedOut.error).toBe("stability_timeout");
+    expect(timedOut.qualityHint).toBeNull();
+  });
 });

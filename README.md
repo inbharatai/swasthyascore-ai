@@ -67,8 +67,9 @@ Backend persistence is an in-memory store typed and clearly marked as a placehol
 
 - **Real, on-device, no mock.** The only engine is `SignalRppgEngine`: genuine frame capture from the phone camera, MediaPipe FaceLandmarker ROI, green-channel signal, detrend, biquad bandpass, and autocorrelation → heart rate. There is no mock/fallback path — every scan reads the live camera. It is still **experimental and not clinically validated**; results are for awareness only and never a diagnosis.
 - **Front camera = face scan** → heart rate + respiratory rate. **Rear camera = fingertip scan** → heart rate only (place a fingertip over the lens). The rear/finger provider (`FingerFrameProvider`) averages the pulsing red channel.
+- **Accuracy levers in the live scan UI:** the camera requests an ideal **60 fps** (more samples per cardiac cycle → sharper autocorrelation; `ideal`, not `max`, so the device picks a supported rate and the two-tier fallback drops it if rejected). A **3-2-1 "get ready" countdown + stability gate** discards the first ~seconds while the user settles: the 20s clock starts only after `faceStability > 0.8` (face) or `lightingScore > 0.5` (finger) is sustained ≥1s, with a 10s ceiling → `stability_timeout`. A **live PPG waveform** is drawn each frame from `detrend(green, 15)` (the same preprocessing the engine uses) on an imperative canvas, plus live **Lighting / Motion / Stability** meters driven by the real per-frame telemetry. A **torch (flash) toggle** is offered in finger mode to flood the fingertip for a stronger red pulse. The final BPM is shown only on completion (count-up animation) — no provisional jumpy number during the scan.
 - The MediaPipe model is fetched from a CDN on first use, so a scan needs internet the first time; if the model fails to load the scan surfaces a real "needs internet on first use" error (no fabricated numbers). Low confidence nulls the readings and recommends a repeat scan.
-- The landing page has a dedicated **Camera Heart-Rate Scan** spotlight with a **Measure heart rate** button that opens Health AI directly on the vital scan.
+- The landing page hero merges the **Camera Heart-Rate Scan** spotlight: an animated heartbeat/PPG trace, a **Measure heart rate** button (deep-links into Health AI directly on the scan), and a 60-second count-up badge. The scan screen title reads **Heart beat scan**.
 
 ## Privacy And Data
 
@@ -244,12 +245,15 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 23. Open email with subject/body prefilled.
 24. Use native share where supported.
 25. Confirm no diagnosis or medicine prescription language appears.
-26. On the landing page, tap **Measure heart rate** and confirm it opens Health AI directly on the Camera Vital Scan (no extra tab navigation).
-27. Grant consent and run a real front-camera vital scan (20s); confirm a heart-rate result with a confidence label and the "experimental, not clinically validated" note — no "demo/mock" badge.
-28. Switch to the rear camera, follow the fingertip guidance, and scan; confirm a heart-rate result with no respiratory rate.
-29. Upload a sample lab report; confirm markers and critical flags render and that no marker says "you have …" or prescribes a medicine.
-30. Enter symptoms and generate a health advisory; confirm a risk level, lifestyle plan, doctor summary, family summary, and safety note render with no diagnosis wording.
-31. Turn offline before a first scan and confirm the scan shows a "needs internet on first use" error rather than a fabricated heart rate.
+26. On the landing page, confirm the hero shows the animated heartbeat/PPG trace, a **60-second** count-up badge, and a **Measure heart rate** button; tap it and confirm it opens Health AI directly on the scan (no extra tab navigation).
+27. On the scan screen, confirm the title reads **Heart beat scan** and the **Face / Finger** segmented toggle switches the camera mode (front = face HR+RR, rear = finger HR only) with no double-switch.
+28. Grant consent and watch the **3-2-1 countdown**; the face oval pulses white → emerald once you hold still, and the 20s clock starts only after the stability gate passes. Confirm the live waveform + Lighting/Motion/Stability meters update each frame (move the phone → the motion meter drops and a motion hint shows).
+29. Complete a front-camera scan; confirm an animated result card with a count-up BPM, a confidence ring (good/moderate/low/fail color), and the prominent **experimental, not clinically validated** badge — no "demo/mock" badge and no provisional BPM was shown during the scan.
+30. Switch to finger mode, place a fingertip over the rear lens, and (on Android) toggle the **torch** — confirm the waveform amplitude rises with the torch on. On iOS Safari, confirm the torch button is simply absent (not broken).
+31. If the user cannot hold still within 10s, confirm a `stability_timeout` failure (no fabricated heart rate); a no-face or low-light condition shows the matching hint and nulls the readings on low confidence.
+32. Upload a sample lab report; confirm markers and critical flags render and that no marker says "you have …" or prescribes a medicine.
+33. Enter symptoms and generate a health advisory; confirm a risk level, lifestyle plan, doctor summary, family summary, and safety note render with no diagnosis wording.
+34. Turn offline before a first scan and confirm the scan shows a "needs internet on first use" error rather than a fabricated heart rate.
 
 ## Known Limitations
 
@@ -260,7 +264,7 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 - Browser voice input depends on device and browser support.
 - MediaPipe pose detection depends on lighting, full-body visibility, browser support, and model loading.
 - Camera Health Assist is guidance only and does not replace manual measurements.
-- UnoOne Health rPPG is real and on-device but experimental and not clinically validated. It is for awareness only and never diagnoses; the rear-finger mode gives heart rate only.
+- UnoOne Health rPPG is real and on-device but experimental and not clinically validated. It is for awareness only and never diagnoses; the rear-finger mode gives heart rate only. The torch toggle is unavailable on iOS Safari (it does not expose `torch` in track capabilities) — the button is hidden, not broken. The 60fps ideal is a request; the device may deliver a lower rate and the two-tier constraint fallback handles rejection.
 - UnoOne Health backend persistence is an in-memory placeholder until the real Swasthyak backend is connected.
 
 ## Safety Boundaries

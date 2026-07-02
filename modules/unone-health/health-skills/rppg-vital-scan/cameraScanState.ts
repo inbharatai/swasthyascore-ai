@@ -15,6 +15,7 @@ export type ScanStatus =
   | "low_light"
   | "motion"
   | "switching"
+  | "countdown"
   | "scanning"
   | "failed"
   | "low_confidence"
@@ -36,6 +37,9 @@ export interface CameraScanState {
   result: VitalScanResult | null;
   error: string | null;
   qualityHint: QualityHint;
+  /** Seconds remaining in the pre-scan "get ready" countdown (3..0). Only
+   * meaningful while `status === "countdown"`. */
+  countdownRemaining: number;
 }
 
 export type CameraScanAction =
@@ -44,6 +48,9 @@ export type CameraScanAction =
   | { type: "request_permission" }
   | { type: "permission_denied" }
   | { type: "camera_unavailable" }
+  | { type: "begin_countdown" }
+  | { type: "countdown_tick"; remaining: number }
+  | { type: "stability_timeout" }
   | { type: "start_scan" }
   | { type: "progress"; fraction: number }
   | { type: "no_face" }
@@ -67,6 +74,7 @@ export const initialCameraScanState: CameraScanState = {
   result: null,
   error: null,
   qualityHint: null,
+  countdownRemaining: 0,
 };
 
 export function cameraFacingToMode(
@@ -93,6 +101,29 @@ export function cameraScanReducer(
       return { ...state, status: "permission_denied" };
     case "camera_unavailable":
       return { ...state, status: "camera_unavailable" };
+    case "begin_countdown":
+      // Enter the pre-scan "get ready" countdown. Only valid once consent is
+      // given; preserves facing/cameraMode so a mid-countdown switch cannot
+      // corrupt the metadata sent to Swasthyak.
+      if (!state.consentGiven) return state;
+      return {
+        ...state,
+        status: "countdown",
+        countdownRemaining: 3,
+        result: null,
+        error: null,
+        qualityHint: null,
+      };
+    case "countdown_tick":
+      if (state.status !== "countdown") return state;
+      return { ...state, countdownRemaining: action.remaining };
+    case "stability_timeout":
+      return {
+        ...state,
+        status: "failed",
+        error: "stability_timeout",
+        qualityHint: null,
+      };
     case "start_scan":
       if (!state.consentGiven) return state;
       return {

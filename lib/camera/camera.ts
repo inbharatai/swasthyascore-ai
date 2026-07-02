@@ -25,20 +25,26 @@ export function isSecureCameraOrigin() {
   );
 }
 
-function buildPreferredConstraints(
+export function buildPreferredConstraints(
   options: RequestCameraStreamOptions,
 ): MediaStreamConstraints {
+  // frameRate ideal 60 raises the rPPG sample rate -> sharper autocorrelation
+  // peaks (more samples per cardiac cycle). `ideal` (not `max`) lets the
+  // device pick a supported rate; the two-tier fallback in
+  // requestCameraStream drops all ideal constraints if 60fps is rejected.
   return {
     video: options.deviceId
       ? {
           deviceId: { exact: options.deviceId },
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          frameRate: { ideal: 60 },
         }
       : {
           facingMode: { ideal: options.facingMode ?? "environment" },
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          frameRate: { ideal: 60 },
         },
     audio: false,
   };
@@ -77,6 +83,47 @@ export function stopCameraStream(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => {
     track.stop();
   });
+}
+
+/** First video track of a stream, or null. */
+export function getVideoTrack(
+  stream: MediaStream | null,
+): MediaStreamTrack | null {
+  return stream?.getVideoTracks()?.[0] ?? null;
+}
+
+/**
+ * Whether the track's camera exposes a torch (flash) the page can toggle. iOS
+ * Safari does not surface `torch` in getCapabilities(), so this returns false
+ * there — callers must render any torch UI conditionally on this.
+ */
+export function getTorchCapability(track: MediaStreamTrack | null): boolean {
+  if (!track) return false;
+  try {
+    const caps = track.getCapabilities?.();
+    return Boolean(caps && "torch" in caps && (caps as MediaTrackCapabilities & { torch?: boolean }).torch);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Toggle the camera torch (flash). Resolves false if the device rejected the
+ * constraint (e.g. OverconstrainedError) so callers can gracefully ignore it.
+ */
+export async function setTorch(
+  track: MediaStreamTrack | null,
+  on: boolean,
+): Promise<boolean> {
+  if (!track) return false;
+  try {
+    await track.applyConstraints({
+      advanced: [{ torch: on } as MediaTrackConstraintSet],
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getCameraPermissionState(): Promise<

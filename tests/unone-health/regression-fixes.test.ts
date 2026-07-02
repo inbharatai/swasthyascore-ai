@@ -181,4 +181,18 @@ describe("camera scan reducer — decoupled quality hint", () => {
     expect(back.facing).toBe("user");
     expect(back.cameraMode).toBe("front_face");
   });
+
+  it("begin_countdown preserves facing/cameraMode (no mid-countdown metadata corruption)", () => {
+    // Switch to the rear/finger scan first, then enter the countdown: the mode
+    // metadata sent to Swasthyak must survive the countdown transition.
+    const rear = reduce({ type: "grant_consent" }, { type: "switch_camera" });
+    expect(rear.facing).toBe("environment");
+    expect(rear.cameraMode).toBe("rear_finger");
+
+    const counting = cameraScanReducer(rear, { type: "begin_countdown" });
+    expect(counting.status).toBe("countdown");
+    expect(counting.countdownRemaining).toBe(3);
+    expect(counting.facing).toBe("environment");
+    expect(counting.cameraMode).toBe("rear_finger");
+  });
 });

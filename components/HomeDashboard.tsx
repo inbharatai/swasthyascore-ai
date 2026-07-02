@@ -12,7 +12,8 @@ import {
   PlayCircle,
   ShieldCheck,
 } from "lucide-react";
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useState, type CSSProperties } from "react";
+import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { calculateScreeningResult } from "@/lib/calculators/overallRisk";
 import type { Language, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
@@ -234,6 +235,48 @@ function ProductMediaShowcase({ language }: { language: Language }) {
   );
 }
 
+/** Animated count-up rendered via a motion value (no React state, so it never
+ * trips React 19's set-state-in-effect rule). Used by the hero "60 seconds"
+ * badge to telegraph scan speed on first paint. */
+function CountUp({ to, duration = 1.4 }: { to: number; duration?: number }) {
+  const count = useMotionValue(0);
+  const text = useTransform(count, (v) => String(Math.round(v)));
+  useEffect(() => {
+    const controls = animate(count, to, { duration, ease: "easeOut" });
+    return () => controls.stop();
+  }, [count, to, duration]);
+  return <motion.span>{text}</motion.span>;
+}
+
+/** Decorative heartbeat / PPG trace that "draws" itself repeatedly via the
+ * `waveform-shimmer` keyframe (stroke-dashoffset sweep). `pathLength={100}`
+ * normalizes the dash math so the same `--trace-length:100` works on any size. */
+const pulseTraceStyle = { "--trace-length": "100" } as CSSProperties;
+
+function HeroPulseTrace() {
+  return (
+    <svg
+      viewBox="0 0 300 60"
+      preserveAspectRatio="none"
+      className="h-12 w-full"
+      aria-hidden="true"
+    >
+      <path
+        d="M0,30 L70,30 L80,28 L88,30 L96,12 L104,52 L112,24 L120,30 L300,30"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        pathLength={100}
+        strokeDasharray={100}
+        className="animate-waveform-shimmer"
+        style={pulseTraceStyle}
+      />
+    </svg>
+  );
+}
+
 function HomeView({
   language,
   online,
@@ -249,9 +292,15 @@ function HomeView({
 }) {
   return (
     <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-[40px] border border-white/60 bg-[linear-gradient(140deg,#064e3b_0%,#0f766e_42%,#0369a1_100%)] p-5 text-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] sm:p-7">
-        <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/15 blur-2xl" />
-        <div className="absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative overflow-hidden rounded-[40px] border border-white/60 bg-[linear-gradient(140deg,#064e3b_0%,#0f766e_42%,#0369a1_100%)] p-5 text-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] sm:p-7"
+      >
+        <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/15 blur-2xl animate-aurora-drift" />
+        <div className="absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl animate-aurora-drift [animation-delay:-6s]" />
         <div className="relative">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -269,39 +318,80 @@ function HomeView({
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <button
+            <motion.button
               type="button"
               onClick={() => onTabChange("risk")}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
               className="min-h-14 rounded-full bg-white px-6 text-base font-bold text-emerald-950 shadow-sm"
             >
               {translate(language, "home.hero.cta")}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
-              onClick={() => onTabChange("camera")}
-              className="min-h-14 rounded-full bg-white/12 px-6 text-base font-bold text-white ring-1 ring-white/30"
+              onClick={onMeasureHeartRate}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-white/12 px-6 text-base font-bold text-white ring-1 ring-white/30"
             >
-              {translate(language, "card.camera.title")}
-            </button>
+              <HeartPulse className="h-5 w-5 text-rose-300" />
+              {translate(language, "home.hero.ctaHeartRate")}
+            </motion.button>
+          </div>
+
+          {/* Heart-rate strip — merged spotlight. Animated PPG trace + scan-speed badge. */}
+          <div className="mt-6 rounded-[28px] bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <HeartPulse className="h-5 w-5 shrink-0 text-rose-300" />
+              <div className="min-w-0 flex-1 text-emerald-200">
+                <HeroPulseTrace />
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white">
+                <Activity className="h-3.5 w-3.5" />
+                <CountUp to={60} /> {translate(language, "home.hero.durationBadge")}
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-white/85">
+              <span className="font-semibold text-white">
+                {translate(language, "unone.heart.headline")}.
+              </span>{" "}
+              {translate(language, "unone.heart.body")}{" "}
+              <span className="text-white/70">
+                {translate(language, "home.hero.heartStrip")}
+              </span>
+            </p>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {kpiCards.map(({ key, icon: Icon }) => (
-              <div
+            {kpiCards.map(({ key, icon: Icon }, index) => (
+              <motion.div
                 key={key}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.45,
+                  ease: "easeOut",
+                  delay: 0.1 + index * 0.06,
+                }}
                 className="rounded-[24px] bg-white/12 p-4 ring-1 ring-white/15"
               >
                 <Icon className="h-5 w-5" />
                 <p className="mt-3 text-sm font-semibold leading-6 text-white/90">
                   {translate(language, key)}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section>
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-700)]">
@@ -322,12 +412,18 @@ function HomeView({
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {moduleCards.map(({ icon: Icon, titleKey, descriptionKey, tab }) => (
-            <button
+          {moduleCards.map(({ icon: Icon, titleKey, descriptionKey, tab }, index) => (
+            <motion.button
               key={titleKey}
               type="button"
               onClick={() => onTabChange(tab)}
-              className="group rounded-[30px] border border-white/70 bg-white/95 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.45, ease: "easeOut", delay: index * 0.06 }}
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.98 }}
+              className="group rounded-[30px] border border-white/70 bg-white/95 p-5 text-left shadow-sm"
             >
               <span className="inline-flex rounded-2xl bg-[var(--surface-muted)] p-3 text-[var(--brand-700)]">
                 <Icon className="h-5 w-5" />
@@ -338,12 +434,18 @@ function HomeView({
               <p className="mt-2 text-sm leading-6 text-[var(--slate-600)]">
                 {translate(language, descriptionKey)}
               </p>
-            </button>
+            </motion.button>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#064e3b_0%,#0f766e_45%,#0369a1_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-7">
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#064e3b_0%,#0f766e_45%,#0369a1_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-7"
+      >
         <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:items-center">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white/90">
@@ -361,20 +463,27 @@ function HomeView({
               {translate(language, "unone.privacy")}
             </p>
             <div className="mt-5">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => onTabChange("ai")}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 className="min-h-12 rounded-full bg-white px-6 text-sm font-bold text-emerald-950 shadow-sm"
               >
                 {translate(language, "unone.showcase.cta")}
-              </button>
+              </motion.button>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            {aiShowcaseCards.map(({ icon: Icon, titleKey, descriptionKey }) => (
-              <div
+            {aiShowcaseCards.map(({ icon: Icon, titleKey, descriptionKey }, index) => (
+              <motion.div
                 key={titleKey}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: index * 0.06 }}
+                whileHover={{ y: -4 }}
                 className="rounded-[24px] bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm"
               >
                 <span className="inline-flex rounded-2xl bg-white/15 p-2.5 text-white">
@@ -386,44 +495,28 @@ function HomeView({
                 <p className="mt-1.5 text-xs leading-5 text-white/80">
                   {translate(language, descriptionKey)}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#7f1d1d_0%,#be123c_45%,#0f766e_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-2xl">
-            <h2 className="inline-flex items-center gap-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-              <HeartPulse className="h-7 w-7" />
-              {translate(language, "unone.heart.headline")}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-white/85">
-              {translate(language, "unone.heart.body")}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onMeasureHeartRate}
-            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-rose-800 shadow-sm"
-          >
-            <HeartPulse className="h-4 w-4" />
-            {translate(language, "unone.heart.cta")}
-          </button>
-        </div>
-      </section>
+      </motion.section>
 
       <ProductMediaShowcase language={language} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="grid gap-4 lg:grid-cols-2"
+      >
         <p className="rounded-[28px] border border-white/70 bg-white/90 p-5 text-sm leading-6 text-[var(--slate-700)] shadow-sm">
           {translate(language, "app.privacy")}
         </p>
         <p className="rounded-[28px] border border-white/70 bg-white/90 p-5 text-sm leading-6 text-[var(--slate-700)] shadow-sm">
           {translate(language, "app.offlineReady")}
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
