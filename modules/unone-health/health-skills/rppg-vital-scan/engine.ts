@@ -2,15 +2,19 @@ import type { VitalScanResult } from "@/modules/unone-health/core/types";
 import {
   buildConfidenceBlock,
   applyConfidencePolicy,
+  labelForConfidence,
 } from "./confidence";
 import {
   detrend,
   bandpass,
-  dominantFrequencyHz,
-  hzToBpm,
   signalQualityScore,
   estimateRespiratoryRateRpm,
 } from "./signal";
+import {
+  estimateHeartRateFromFrames,
+  type HeartRateMode,
+  type HeartRateEstimate,
+} from "./heartRate";
 
 /**
  * Engine contract. The runtime picks the engine; the UI never calls OpenAI for
@@ -35,8 +39,20 @@ export interface RppgScanParams {
 }
 
 export interface RppgScanSamples {
+  /** Per-frame red mean (finger-mode signal; feeds POS for face). */
+  red: number[];
+  /** Per-frame green mean (face-mode primary channel; feeds POS). */
   green: number[];
+  /** Per-frame blue mean (feeds POS for face). */
+  blue: number[];
   timestampsMs: number[];
+  /** Per-frame motion quality (0..1). */
+  motion: number[];
+  /** Per-frame lighting quality (0..1). */
+  lighting: number[];
+  /** Per-frame face/ROI stability (0..1). */
+  stability: number[];
+  /** Aggregate (mean) sub-scores used by the confidence block. */
   faceRoiStability: number;
   motionScore: number;
   lightingScore: number;
@@ -45,10 +61,18 @@ export interface RppgScanSamples {
   sampleRate: number;
 }
 
-/** A single per-frame measurement produced by a camera sampler. */
+/** A single per-frame measurement produced by a camera sampler. `redMean`/
+ * `blueMean` are optional so legacy single-channel fixtures keep compiling; a
+ * face-mode scan must supply them (POS needs all three channels). For finger
+ * mode the red mean is carried in `greenMean` historically AND now `redMean`. */
 export interface RppgFrameSample {
   greenMean: number;
+  redMean?: number;
+  blueMean?: number;
   timestampMs: number;
+  /** Media timestamp of the underlying video frame (for dedup); falls back to
+   * `timestampMs` when the provider cannot read it. */
+  mediaTime?: number;
   faceStability: number;
   motionScore: number;
   lightingScore: number;
@@ -59,31 +83,47 @@ export interface RppgFrameSample {
 export function aggregateFrameSamples(
   frames: RppgFrameSample[],
 ): RppgScanSamples {
-  if (frames.length === 0) {
-    return {
-      green: [],
-      timestampsMs: [],
-      faceRoiStability: 0,
-      motionScore: 0,
-      lightingScore: 0,
-      signalQuality: 0,
-      leftRightRoiConsistency: 0,
-      sampleRate: 0,
-    };
-  }
+  const empty: RppgScanSamples = {
+    red: [],
+    green: [],
+    blue: [],
+    timestampsMs: [],
+    motion: [],
+    lighting: [],
+    stability: [],
+    faceRoiStability: 0,
+    motionScore: 0,
+    lightingScore: 0,
+    signalQuality: 0,
+    leftRightRoiConsistency: 0,
+    sampleRate: 0,
+  };
+  if (frames.length === 0) return empty;
+
   const mean = (selector: (f: RppgFrameSample) => number) =>
     frames.reduce((sum, f) => sum + selector(f), 0) / frames.length;
 
   const green = frames.map((f) => f.greenMean);
+  // Legacy single-channel fixtures (no redMean/blueMean) default to green so
+  // they still produce a trace; real face scans supply all three.
+  const red = frames.map((f) => f.redMean ?? f.greenMean);
+  const blue = frames.map((f) => f.blueMean ?? f.greenMean);
   const timestampsMs = frames.map((f) => f.timestampMs);
-  const span =
-    (timestampsMs[timestampsMs.length - 1] - timestampsMs[0]) / 1000;
+  const motion = frames.map((f) => f.motionScore);
+  const lighting = frames.map((f) => f.lightingScore);
+  const stability = frames.map((f) => f.faceStability);
+  const span = (timestampsMs[timestampsMs.length - 1] - timestampsMs[0]) / 1000;
   const sampleRate = span > 0 ? (frames.length - 1) / span : 30;
 
   const synthetic = bandpass(detrend(green), sampleRate || 30, 0.75, 3.0);
   return {
+    red,
     green,
+    blue,
     timestampsMs,
+    motion,
+    lighting,
+    stability,
     faceRoiStability: mean((f) => f.faceStability),
     motionScore: mean((f) => f.motionScore),
     lightingScore: mean((f) => f.lightingScore),
@@ -98,8 +138,13 @@ export function aggregateFrameSamples(
 
 /**
  * Pure finaliser shared by every engine. Runs the actual HR/RR estimation from
- * the green-channel trace and applies the confidence policy (nulls HR/RR on
- * fail, recommends repeat below good). No DOM access.
+ * the per-frame RGB + quality traces and applies the confidence policy (nulls
+ * HR/RR on fail, recommends repeat below good). No DOM access.
+ *
+ * Heart rate now flows through `estimateHeartRateFromFrames` (POS/red → SPA →
+ * zero-phase bandpass → Welch + autocorr reconciliation + snrSQI/rdspSQI
+ * gates). The estimate's trust (SNR + per-window agreement) caps the reported
+ * confidence so a well-lit-but-noisy capture cannot be reported as "good".
  */
 export function finalizeVitalScan(
   samples: RppgScanSamples,
@@ -115,11 +160,37 @@ export function finalizeVitalScan(
     leftRightRoiConsistency: samples.leftRightRoiConsistency,
   });
 
-  const heartRateBpm = estimateHeartRate(samples);
+  const mode: HeartRateMode =
+    params.cameraMode === "front_face" ? "front_face" : "rear_finger";
+  const hrEstimate = estimateHeartRateFromFrames({
+    r: samples.red,
+    g: samples.green,
+    b: samples.blue,
+    timestampsMs: samples.timestampsMs,
+    motion: samples.motion,
+    lighting: samples.lighting,
+    stability: samples.stability,
+    mode,
+  });
+
+  const heartRateBpm = hrEstimate.bpm;
+  // RR is only meaningful for face mode and only when the HR estimate is
+  // trustworthy (a failed HR gate means the capture is too noisy for RR too).
   const respiratoryRateBpm =
-    params.cameraMode === "front_face"
-      ? estimateRespiratoryRate(samples)
+    params.cameraMode === "front_face" && heartRateBpm != null
+      ? estimateRespiratoryRateRpm(samples.green, samples.sampleRate)
       : null;
+
+  // Cap confidence by signal trust so a noisy capture never reads as "good".
+  const hrTrust = heartRateBpm != null ? hrTrustScore(hrEstimate) : 0;
+  const qualityConfidence = confidenceBlock.confidence;
+  const confidence =
+    heartRateBpm != null
+      ? Math.min(qualityConfidence, 0.35 + 0.65 * hrTrust)
+      : Math.min(qualityConfidence, 0.45); // no trustworthy HR → at most "low"
+  // Recompute the label from the capped confidence so the policy (null on fail,
+  // repeat below good) acts on the honest value, not the quality-only one.
+  const confidence_label = labelForConfidence(confidence);
 
   const base: VitalScanResult = {
     event_type: "vital_scan",
@@ -127,8 +198,8 @@ export function finalizeVitalScan(
     camera_mode: params.cameraMode,
     heart_rate_bpm: heartRateBpm,
     respiratory_rate_bpm: respiratoryRateBpm,
-    confidence: confidenceBlock.confidence,
-    confidence_label: confidenceBlock.confidence_label,
+    confidence,
+    confidence_label,
     signal_quality: confidenceBlock.signal_quality,
     lighting_quality: confidenceBlock.lighting_quality,
     motion_detected: confidenceBlock.motion_detected,
@@ -143,22 +214,10 @@ export function finalizeVitalScan(
   return applyConfidencePolicy(base);
 }
 
-function estimateHeartRate(samples: RppgScanSamples): number | null {
-  if (samples.green.length < 8 || samples.sampleRate <= 0) return null;
-  const detrended = detrend(samples.green);
-  const filtered = bandpass(detrended, samples.sampleRate, 0.75, 3.0);
-  const hz = dominantFrequencyHz(filtered, samples.sampleRate);
-  const bpm = hzToBpm(hz);
-  if (bpm < 40 || bpm > 180) return null;
-  return bpm;
-}
-
-function estimateRespiratoryRate(samples: RppgScanSamples): number | null {
-  // Delegates to the pure `estimateRespiratoryRateRpm` (mean-remove + cascaded
-  // bandpass + warmup trim + global-max autocorrelation + band-power share
-  // gate). See signal.ts for why each step is needed — the previous
-  // detrend(window=31) approach was a high-pass that destroyed the 0.1–0.5 Hz
-  // breath band before the bandpass ever saw it, and the first-significant
-  // peak rule locked onto heart-rate leakage at ~0.4 Hz.
-  return estimateRespiratoryRateRpm(samples.green, samples.sampleRate);
+/** Trust score (0..1) for an accepted HR estimate: 50% spectral SNR + 50%
+ * per-window agreement. Used to cap confidence. */
+function hrTrustScore(hr: HeartRateEstimate): number {
+  const agreement =
+    hr.totalWindows > 0 ? hr.acceptedWindows / hr.totalWindows : 1;
+  return Math.max(0, Math.min(1, 0.5 * hr.snr + 0.5 * agreement));
 }

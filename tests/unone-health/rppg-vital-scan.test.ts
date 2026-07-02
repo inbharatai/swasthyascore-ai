@@ -11,22 +11,47 @@ const FIXED_NOW = "2026-07-01T00:00:00.000Z";
 const FPS = 30;
 
 /**
- * Build a real-shape green-channel trace at a target heart rate. This is a
- * synthetic signal fixture (pure math) that exercises the REAL pipeline
- * (aggregateFrameSamples -> finalizeVitalScan -> bandpass -> autocorrelation);
- * it is not a stand-in "engine" and never ships.
+ * Build a real-shape RGB trace at a target heart rate. This is a synthetic
+ * signal fixture (pure math) that exercises the REAL pipeline
+ * (aggregateFrameSamples -> finalizeVitalScan -> POS -> SPA -> zero-phase
+ * bandpass -> Welch + autocorrelation); it is not a stand-in "engine" and
+ * never ships.
+ *
+ * The pulse is carried in ALL THREE channels with realistic per-channel
+ * amplitudes (green strongest, red moderate, blue weakest) — POS projects the
+ * plane orthogonal to skin tone, so r=g=b would give a degenerate (zero)
+ * signal. An optional breath overlay (0.1–0.5 Hz) is added to the green channel
+ * for the respiratory-rate test.
  */
+function pulseChannels(
+  t: number,
+  hz: number,
+  breathHz = 0,
+): { r: number; g: number; b: number } {
+  const pulse = Math.sin(2 * Math.PI * hz * t);
+  const breath = breathHz > 0 ? Math.sin(2 * Math.PI * breathHz * t) : 0;
+  return {
+    r: 130 + pulse * 3,
+    g: 128 + pulse * 5 + breath * 5,
+    b: 126 + pulse * 2,
+  };
+}
+
 function syntheticFrames(
   hz: number,
   seconds: number,
   quality = 0.9,
+  breathHz = 0,
 ): RppgFrameSample[] {
   const frames: RppgFrameSample[] = [];
   const n = FPS * seconds;
   for (let i = 0; i < n; i++) {
     const t = i / FPS;
+    const { r, g, b } = pulseChannels(t, hz, breathHz);
     frames.push({
-      greenMean: 128 + Math.sin(2 * Math.PI * hz * t) * 0.06,
+      greenMean: g,
+      redMean: r,
+      blueMean: b,
       timestampMs: Math.round(t * 1000),
       faceStability: quality,
       motionScore: quality,
@@ -40,6 +65,8 @@ function syntheticFrames(
 function flatFrames(count: number, quality: number): RppgFrameSample[] {
   return Array.from({ length: count }, (_, i) => ({
     greenMean: 128,
+    redMean: 130,
+    blueMean: 126,
     timestampMs: i * 33,
     faceStability: quality,
     motionScore: quality,
@@ -71,8 +98,8 @@ describe("rPPG confidence formula", () => {
 });
 
 describe("rPPG signal pipeline", () => {
-  it("recovers a plausible heart rate from a clean green-channel trace", () => {
-    // 1.2 Hz = 72 BPM, inside the 0.75-3.0 Hz HR band.
+  it("recovers a plausible heart rate from a clean RGB trace (POS)", () => {
+    // 1.2 Hz = 72 BPM, inside the 0.7-3.0 Hz HR band. POS combines R/G/B.
     const samples = aggregateFrameSamples(syntheticFrames(1.2, 20));
     const result = finalizeVitalScan(
       samples,
@@ -155,22 +182,7 @@ describe("rPPG respiratory-rate accuracy + noise rejection", () => {
   it("recovers a 0.25 Hz (15 rpm) respiratory signal overlaid on the HR trace", () => {
     // 1.2 Hz HR + 0.25 Hz breathing, 20s. The 0.1–0.5 Hz bandpass must isolate
     // the breath component and the stricter 0.35 energy gate must still accept it.
-    const frames: RppgFrameSample[] = [];
-    const n = FPS * 20;
-    for (let i = 0; i < n; i++) {
-      const t = i / FPS;
-      frames.push({
-        greenMean:
-          128 +
-          Math.sin(2 * Math.PI * 1.2 * t) * 0.06 +
-          Math.sin(2 * Math.PI * 0.25 * t) * 0.05,
-        timestampMs: Math.round(t * 1000),
-        faceStability: 0.9,
-        motionScore: 0.9,
-        lightingScore: 0.9,
-        leftRightConsistency: 0.9,
-      });
-    }
+    const frames = syntheticFrames(1.2, 20, 0.9, 0.25);
     const result = finalizeVitalScan(
       aggregateFrameSamples(frames),
       { cameraMode: "front_face", durationSeconds: 20 },
@@ -183,16 +195,33 @@ describe("rPPG respiratory-rate accuracy + noise rejection", () => {
   });
 
   it("rejects a noisy trace: HR and RR both null (no fabricated rates)", () => {
-    // LCG noise + good-quality scores — the energy gates (HR 0.2, RR 0.35) must
-    // both reject, so neither rate is invented. This is the end-to-end guard.
+    // Genuinely broadband in-band noise: a sum of 12 sinusoids spread across
+    // 0.4–3.6 Hz with deterministic per-channel phases. This has NO single
+    // dominant peak, so rdspSQI (tallest/2nd) stays < 2 and the per-window
+    // autocorrelation disagrees across windows — the gates must reject it so
+    // neither rate is invented. (A pure LCG was rejected as too colored: with
+    // only ~3 Welch segments it could spuriously clear rdspSqi ≥ 2.)
+    const freqs = [0.4, 0.65, 0.9, 1.15, 1.4, 1.65, 1.9, 2.15, 2.4, 2.65, 2.9, 3.6];
+    const phasesR = [0.1, 1.2, 2.3, 0.7, 1.9, 0.3, 2.8, 1.1, 0.5, 2.0, 1.4, 0.9];
+    const phasesG = [2.2, 0.4, 1.7, 2.9, 0.6, 1.3, 0.2, 2.5, 1.8, 0.8, 2.1, 1.0];
+    const phasesB = [1.5, 2.7, 0.3, 1.1, 2.0, 0.9, 1.6, 0.5, 2.4, 1.2, 0.7, 2.6];
     const frames: RppgFrameSample[] = [];
-    let state = 424242;
     const n = FPS * 20;
     for (let i = 0; i < n; i++) {
-      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      const t = i / FPS;
+      let r = 130;
+      let g = 128;
+      let b = 126;
+      for (let k = 0; k < freqs.length; k++) {
+        r += Math.sin(2 * Math.PI * freqs[k] * t + phasesR[k]) * 3;
+        g += Math.sin(2 * Math.PI * freqs[k] * t + phasesG[k]) * 3;
+        b += Math.sin(2 * Math.PI * freqs[k] * t + phasesB[k]) * 3;
+      }
       frames.push({
-        greenMean: 128 + (state / 0x7fffffff - 0.5) * 20,
-        timestampMs: Math.round((i / FPS) * 1000),
+        greenMean: g,
+        redMean: r,
+        blueMean: b,
+        timestampMs: Math.round(t * 1000),
         faceStability: 0.9,
         motionScore: 0.9,
         lightingScore: 0.9,

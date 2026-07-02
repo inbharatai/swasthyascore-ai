@@ -6,11 +6,12 @@
  * `@mediapipe/tasks-vision` (already a dependency) so it never loads on the
  * server or in the Node test environment.
  *
- * EXPERIMENTAL — NOT CLINICALLY VALIDATED. The green-channel -> bandpass ->
- * autocorrelation pipeline gives a plausible heart-rate estimate under good
- * lighting with a still face, but single-camera rPPG is not a medical
- * measurement. Results are tagged `engine: "signal"` and the UI must surface
- * the confidence score + "not clinically validated" note.
+ * EXPERIMENTAL — NOT CLINICALLY VALIDATED. The POS / red-channel -> SPA detrend
+ * -> zero-phase bandpass -> Welch + autocorrelation pipeline gives a plausible
+ * heart-rate estimate under reasonable lighting with a still face/finger, but
+ * single-camera rPPG is not a medical measurement. Results are tagged
+ * `engine: "signal"` and the UI must surface the confidence score + "not
+ * clinically validated" note.
  */
 import type { RppgEngine, RppgScanParams, RppgScanSamples, RppgFrameSample } from "./engine";
 import { aggregateFrameSamples } from "./engine";
@@ -66,11 +67,14 @@ const NOSE_TIP = 1;
 
 interface RoiResult {
   greenMean: number;
+  redMean: number;
+  blueMean: number;
   faceStability: number;
   motionScore: number;
   lightingScore: number;
   leftRightConsistency: number;
   faceDetected: boolean;
+  validRois: number;
 }
 
 function sampleRoiFromFrame(
@@ -99,7 +103,6 @@ function sampleRoiFromFrame(
     const c = landmarks[idx];
     const nose = landmarks[NOSE_TIP];
     if (!c || !nose) return null;
-    // push the box outward from the nose so it sits on the cheek, not near eye/mouth
     const dx = c.x - nose.x;
     const dy = c.y - nose.y;
     return {
@@ -126,10 +129,12 @@ function sampleRoiFromFrame(
     });
   }
 
+  let redSum = 0;
   let greenSum = 0;
-  let greenCount = 0;
-  let brightSum = 0;
-  let brightCount = 0;
+  let blueSum = 0;
+  let greenSumSq = 0;
+  let count = 0;
+  let validRois = 0;
   for (const roi of rois) {
     const x0 = Math.max(0, Math.round(roi.x));
     const y0 = Math.max(0, Math.round(roi.y));
@@ -138,41 +143,78 @@ function sampleRoiFromFrame(
     if (x1 <= x0 || y1 <= y0) continue;
     try {
       const region = ctx.getImageData(x0, y0, x1 - x0, y1 - y0);
-      for (let i = 0; i < region.data.length; i += 4) {
-        greenSum += region.data[i + 1];
-        brightSum += region.data[i] + region.data[i + 1] + region.data[i + 2];
-        greenCount++;
-        brightCount++;
+      const px = region.data;
+      let rc = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i];
+        const g = px[i + 1];
+        const b = px[i + 2];
+        redSum += r;
+        greenSum += g;
+        blueSum += b;
+        greenSumSq += g * g;
+        count++;
+        rc++;
       }
+      if (rc > 0) validRois++;
     } catch {
-      // tainted canvas or out of range — skip
+      // tainted canvas or out of range — skip this ROI
     }
   }
 
-  if (greenCount === 0) return { ...emptyRoi(), faceDetected: true };
+  if (count === 0) return { ...emptyRoi(), faceDetected: true, validRois: 0 };
 
-  const greenMean = greenSum / greenCount;
-  const brightness = brightSum / brightCount / 3; // 0..255
+  const redMean = redSum / count;
+  const greenMean = greenSum / count;
+  const blueMean = blueSum / count;
+  const brightness = (redMean + greenMean + blueMean) / 3; // 0..255
 
-  // Lighting: ~100-200 is good; outside that range degrades.
-  const lightingScore =
-    brightness < 60 || brightness > 245
-      ? 0.2
-      : brightness < 90
-        ? 0.6
-        : 0.9;
+  // Continuous lighting score (replaces the old 3-bucket constant). Peak at
+  // ~160 brightness, smooth roll-off at the extremes. Pulsatility term is the
+  // spatial green AC/DC — a proxy for rPPG SNR (a flat, non-pulsatile ROI is a
+  // bad ROI even if the brightness is nominal).
+  const brightnessTerm =
+    0.2 + 0.7 * (1 - Math.min(1, Math.abs(brightness - 160) / 110));
+  const greenStd = Math.sqrt(Math.max(0, greenSumSq / count - greenMean * greenMean));
+  const pulsatilityTerm = Math.min(1, (greenStd / Math.max(1, greenMean)) * 30);
+  const lightingScore = Math.max(
+    0,
+    Math.min(1, 0.75 * brightnessTerm + 0.25 * pulsatilityTerm),
+  );
 
-  // Stability: how much the nose tip moved since last frame.
+  // Motion: raw nose displacement in normalized coords (drives the UI meter and
+  // the per-frame HR mask). Kept SEPARATE from faceStability so motion is not
+  // double-counted in the confidence formula.
   const center = nose ? { x: nose.x, y: nose.y } : null;
   let motionScore = 0.9;
   if (prevCenter && center) {
     const dist = Math.hypot(center.x - prevCenter.x, center.y - prevCenter.y);
     motionScore = Math.max(0, 1 - dist * 20);
   }
-  const faceStability = Math.min(1, motionScore * 0.9 + 0.1);
+
+  // faceStability is INDEPENDENT of motionScore: it combines ROI visibility
+  // (how many landmark boxes returned pixels) with a face-size-normalized
+  // stillness (nose displacement divided by inter-cheek distance, so a small
+  // face far away is not penalised for the same pixel motion as a close face).
+  const visibility = validRois / 3;
+  let stillness = motionScore;
+  if (leftCheek && rightCheek) {
+    const lc = landmarks[LEFT_CHEEK];
+    const rc = landmarks[RIGHT_CHEEK];
+    if (lc && rc) {
+      const interocular = Math.hypot(lc.x - rc.x, lc.y - rc.y) || 1;
+      const rawDisp = prevCenter && center
+        ? Math.hypot(center.x - prevCenter.x, center.y - prevCenter.y)
+        : 0;
+      stillness = Math.max(0, 1 - (rawDisp / interocular) * 8);
+    }
+  }
+  const faceStability = Math.max(0, Math.min(1, 0.45 * visibility + 0.55 * stillness));
 
   // Left/right cheek consistency: compare green means of the two cheek boxes.
-  let leftRightConsistency = 0.85;
+  // PENALISED (0.3) when a cheek is missing — a partial / profile face should not
+  // read as high consistency.
+  let leftRightConsistency = 0.3;
   if (leftCheek && rightCheek) {
     const leftMean = meanGreenInBox(ctx, leftCheek, w, h);
     const rightMean = meanGreenInBox(ctx, rightCheek, w, h);
@@ -184,11 +226,14 @@ function sampleRoiFromFrame(
 
   return {
     greenMean,
+    redMean,
+    blueMean,
     faceStability,
     motionScore,
     lightingScore,
     leftRightConsistency,
     faceDetected: true,
+    validRois,
   };
 }
 
@@ -226,7 +271,6 @@ function sampleRoiCanvas(
   h: number,
 ): HTMLCanvasElement {
   if (!sampleCanvas) {
-    // Should not happen in browser; return a fresh canvas as a fallback.
     const c = document.createElement("canvas");
     c.width = w;
     c.height = h;
@@ -244,22 +288,30 @@ function sampleRoiCanvas(
 function emptyRoi(): RoiResult {
   return {
     greenMean: 0,
+    redMean: 0,
+    blueMean: 0,
     faceStability: 0,
     motionScore: 0,
     lightingScore: 0,
     leftRightConsistency: 0,
     faceDetected: false,
+    validRois: 0,
   };
 }
 
 /**
  * Frame provider bound to a live <video> element. The UI calls `sample()` on
  * each animation frame during the scan; it returns null when the face is not
- * detected (so the UI can show "no face" feedback).
+ * detected OR when the underlying video frame has not advanced since the last
+ * sample (a duplicate — common when rAF outruns the camera, e.g. 60 Hz display
+ * driving a 30 fps camera). Dedup is the load-bearing fix for real-world BPM
+ * accuracy: duplicates inflate the derived sample rate and bias the
+ * autocorrelation.
  */
 export class FaceRoiFrameProvider {
   private prevCenter: { x: number; y: number } | null = null;
   private landmarker: FaceLandmarker | null = null;
+  private lastMediaTime = -1;
 
   constructor(private readonly video: HTMLVideoElement) {}
 
@@ -269,22 +321,26 @@ export class FaceRoiFrameProvider {
 
   sample(): RppgFrameSample | null {
     if (!this.landmarker) return null;
-    const result = this.landmarker.detectForVideo(
-      this.video,
-      performance.now(),
-    );
+    // Dedup: skip if the video frame hasn't advanced since last sample.
+    const mediaTime = this.video.currentTime;
+    if (mediaTime === this.lastMediaTime) return null;
+    this.lastMediaTime = mediaTime;
+    // Timestamp the sample at capture time (before the slow detection call) so
+    // detection latency jitter does not flow into the sample-rate derivation.
+    const timestampMs = performance.now();
+    const result = this.landmarker.detectForVideo(this.video, timestampMs);
     const landmarks = result.faceLandmarks?.[0];
     const roi = sampleRoiFromFrame(this.video, landmarks, this.prevCenter);
     if (landmarks?.[NOSE_TIP]) {
-      this.prevCenter = {
-        x: landmarks[NOSE_TIP].x,
-        y: landmarks[NOSE_TIP].y,
-      };
+      this.prevCenter = { x: landmarks[NOSE_TIP].x, y: landmarks[NOSE_TIP].y };
     }
     if (!roi.faceDetected) return null;
     return {
       greenMean: roi.greenMean,
-      timestampMs: performance.now(),
+      redMean: roi.redMean,
+      blueMean: roi.blueMean,
+      timestampMs,
+      mediaTime,
       faceStability: roi.faceStability,
       motionScore: roi.motionScore,
       lightingScore: roi.lightingScore,
@@ -296,24 +352,29 @@ export class FaceRoiFrameProvider {
     this.landmarker?.close?.();
     this.landmarker = null;
     this.prevCenter = null;
+    this.lastMediaTime = -1;
   }
 }
 
 /**
  * Finger-over-rear-camera provider. No face ROI — averages a center crop's red
- * channel (the fingertip pressed over the lens floods the frame with a pulsing
- * red signal). Heart-rate only; respiratory rate is never claimed.
+ * channel (the fingertip pressed over the lens, flooded by the torch, gives a
+ * strong pulsing red PPG signal). Captures green+blue too for ambient-leak
+ * detection (if green/blue rise while red is high, ambient light is leaking in
+ * → "cover camera fully"). Heart-rate only; respiratory rate is never claimed.
  *
- * Per-frame quality is REAL, not faked: a rolling buffer of recent red means
- * drives `computeFingerSignalQuality` (frame-to-frame motion, delta-variance
- * stability, AC/DC pulsatility, DC-band lighting). Pulsatility is carried in
- * `leftRightConsistency` so the existing 15% confidence weight measures true
- * PPG signal strength for finger mode (face mode uses it for cheek consistency).
+ * Per-frame quality is REAL: a rolling buffer of recent red means drives
+ * `computeFingerSignalQuality` (frame-to-frame motion, delta-variance
+ * stability, AC/DC pulsatility, DC-band lighting + contact quality). The red
+ * mean is carried in `greenMean` (the pipeline's display/signal channel) so the
+ * live waveform shows the pulsing red trace; the true red/green/blue are in
+ * `redMean`/`greenMean`/`blueMean` for the HR estimator.
  */
 export class FingerFrameProvider {
   private readonly recentReds: number[] = [];
   private prevRed: number | null = null;
   private canvas: HTMLCanvasElement | null = null;
+  private lastMediaTime = -1;
 
   constructor(private readonly video: HTMLVideoElement) {}
 
@@ -322,8 +383,12 @@ export class FingerFrameProvider {
     const h = this.video.videoHeight;
     if (!w || !h) return null;
 
-    // Reuse one canvas (the face provider does the same) — allocating a fresh
-    // canvas every frame at 60fps is a real GC/pressure cost.
+    // Dedup: skip duplicate video frames.
+    const mediaTime = this.video.currentTime;
+    if (mediaTime === this.lastMediaTime) return null;
+    this.lastMediaTime = mediaTime;
+    const timestampMs = performance.now();
+
     if (!this.canvas) this.canvas = document.createElement("canvas");
     const canvas = this.canvas;
     if (canvas.width !== w) canvas.width = w;
@@ -337,14 +402,17 @@ export class FingerFrameProvider {
     const cy = Math.round(h * 0.35);
     const cw = Math.round(w * 0.3);
     const ch = Math.round(h * 0.3);
-    let sum = 0;
+    let rs = 0;
+    let gs = 0;
+    let bs = 0;
     let count = 0;
-    let bright = 0;
     try {
       const region = ctx.getImageData(cx, cy, cw, ch);
-      for (let i = 0; i < region.data.length; i += 4) {
-        sum += region.data[i]; // red channel
-        bright += region.data[i] + region.data[i + 1] + region.data[i + 2];
+      const px = region.data;
+      for (let i = 0; i < px.length; i += 4) {
+        rs += px[i];
+        gs += px[i + 1];
+        bs += px[i + 2];
         count++;
       }
     } catch {
@@ -352,8 +420,10 @@ export class FingerFrameProvider {
     }
     if (!count) return null;
 
-    const redMean = sum / count;
-    const brightness = bright / count / 3;
+    const redMean = rs / count;
+    const greenMean = gs / count;
+    const blueMean = bs / count;
+    const brightness = (redMean + greenMean + blueMean) / 3;
 
     // Rolling buffer for the quality metrics.
     this.recentReds.push(redMean);
@@ -363,18 +433,23 @@ export class FingerFrameProvider {
       recentReds: this.recentReds,
       prevRed: this.prevRed,
       brightness,
+      redMean,
+      greenMean,
+      blueMean,
     });
     this.prevRed = redMean;
 
     return {
-      // Carried in `greenMean` (the pipeline's generic channel-mean field) —
-      // for finger mode this is the RED mean, which is the correct channel.
+      // Display/signal channel carries the pulsing red trace for the waveform.
       greenMean: redMean,
-      timestampMs: performance.now(),
+      redMean,
+      blueMean,
+      timestampMs,
+      mediaTime,
       faceStability: q.stability,
       motionScore: q.motionScore,
       lightingScore: q.lightingScore,
-      // Repurposed as AC/DC pulsatility for finger mode (see class doc).
+      // Repurposed as AC/DC pulsatility for finger mode (contact PPG strength).
       leftRightConsistency: q.pulsatility,
     };
   }
@@ -383,6 +458,7 @@ export class FingerFrameProvider {
     this.recentReds.length = 0;
     this.prevRed = null;
     this.canvas = null;
+    this.lastMediaTime = -1;
   }
 }
 

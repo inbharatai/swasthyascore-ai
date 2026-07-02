@@ -68,7 +68,13 @@ export function VitalScanScreen({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+  // `framesRef` is the WAVEFORM buffer (last WAVEFORM_WINDOW samples, trimmed).
+  // `captureRef` is the MEASUREMENT buffer — every kept frame for the whole scan,
+  // UNTRIMMED. Splitting these is the load-bearing fix for real-world BPM: the old
+  // code estimated HR from the trimmed 7.5–15 s tail of a 20 s scan. The full
+  // window flows to `aggregateFrameSamples` via `captureRef`.
   const framesRef = useRef<RppgFrameSample[]>([]);
+  const captureRef = useRef<RppgFrameSample[]>([]);
   const startRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const providerRef = useRef<FaceRoiFrameProvider | FingerFrameProvider | null>(null);
@@ -101,6 +107,11 @@ export function VitalScanScreen({
   const stopCamera = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+    // Turn the torch off if WE turned it on (auto or manual), so it does not
+    // stay lit after the scan ends. Best-effort — ignore rejection.
+    if (torchOnRef.current && videoTrackRef.current) {
+      void setTorch(videoTrackRef.current, false).catch(() => {});
+    }
     stopCameraStream(streamRef.current);
     streamRef.current = null;
     videoTrackRef.current = null;
@@ -141,7 +152,9 @@ export function VitalScanScreen({
   }, []);
 
   const completeScan = useCallback(() => {
-    const samples = aggregateFrameSamples(framesRef.current);
+    // Aggregate from the UNTRIMMED measurement buffer (full 20 s), not the
+    // waveform buffer. This restores the advertised capture window.
+    const samples = aggregateFrameSamples(captureRef.current);
     const cameraMode = cameraFacingToMode(state.facing, true);
     const result = finalizeVitalScan(
       samples,
@@ -162,22 +175,52 @@ export function VitalScanScreen({
     }
   }, [state.facing, onResult, online, patientId]);
 
-  const pushHint = useCallback((sample: RppgFrameSample | null) => {
-    let hint: "no_face" | "low_light" | "motion" | "quality_ok";
-    if (!sample) hint = "no_face";
-    else if (sample.lightingScore < 0.5) hint = "low_light";
-    else if (sample.motionScore < 0.5) hint = "motion";
-    else hint = "quality_ok";
-    if (lastHintRef.current === hint) return;
-    lastHintRef.current = hint;
-    dispatch({ type: hint });
-  }, []);
+  const pushHint = useCallback(
+    (sample: RppgFrameSample | null) => {
+      // Finger-mode contact hints are derived from the per-frame channel means
+      // (real, not dummies): ambient leak (red<200), saturation/over-press
+      // (red>254), weak pulse (low pulsatility carried in leftRightConsistency).
+      if (sample && state.facing === "environment") {
+        const red = sample.redMean ?? 0;
+        const pulsatility = sample.leftRightConsistency ?? 0;
+        let hint:
+          | "finger_cover_camera"
+          | "finger_press_lighter"
+          | "finger_warm_hands"
+          | "quality_ok";
+        if (red < 200) hint = "finger_cover_camera";
+        else if (red > 254) hint = "finger_press_lighter";
+        else if (pulsatility < 0.15) hint = "finger_warm_hands";
+        else hint = "quality_ok";
+        if (lastHintRef.current === hint) return;
+        lastHintRef.current = hint;
+        dispatch({ type: hint });
+        return;
+      }
+      let hint:
+        | "no_face"
+        | "low_light"
+        | "motion"
+        | "quality_ok";
+      if (!sample) hint = "no_face";
+      else if (sample.lightingScore < 0.5) hint = "low_light";
+      else if (sample.motionScore < 0.5) hint = "motion";
+      else hint = "quality_ok";
+      if (lastHintRef.current === hint) return;
+      lastHintRef.current = hint;
+      dispatch({ type: hint });
+    },
+    [state.facing],
+  );
 
   const isStableFrame = useCallback(
     (sample: RppgFrameSample | null): boolean => {
       if (!sample) return false;
+      // Finger: the lighting score is the honest contact-quality score (low on
+      // ambient leak / saturation / weak pulse); 0.4 = "good enough contact to
+      // start". Face: still needs a stable, well-detected face.
       return state.facing === "environment"
-        ? sample.lightingScore > 0.5
+        ? sample.lightingScore > 0.4
         : sample.faceStability > 0.8;
     },
     [state.facing],
@@ -185,6 +228,9 @@ export function VitalScanScreen({
 
   const drawLive = useCallback((sample: RppgFrameSample | null) => {
     if (sample) {
+      // Measurement buffer: every kept frame, never trimmed.
+      captureRef.current.push(sample);
+      // Waveform buffer: trimmed to the last WAVEFORM_WINDOW*3 for display only.
       framesRef.current.push(sample);
       if (framesRef.current.length > WAVEFORM_WINDOW * 3) {
         framesRef.current.splice(0, framesRef.current.length - WAVEFORM_WINDOW * 3);
@@ -196,7 +242,7 @@ export function VitalScanScreen({
       motionMv.set(sample.motionScore);
       stabilityMv.set(sample.faceStability);
       if (faceOvalRef.current) {
-        const stable = state.facing === "environment" ? sample.lightingScore > 0.5 : sample.faceStability > 0.8;
+        const stable = state.facing === "environment" ? sample.lightingScore > 0.4 : sample.faceStability > 0.8;
         faceOvalRef.current.style.stroke = stable ? "#34d399" : "rgba(255,255,255,0.6)";
         faceOvalRef.current.style.strokeDasharray = stable ? "0" : "6 7";
       }
@@ -262,6 +308,7 @@ export function VitalScanScreen({
     providerRef.current?.release();
     providerRef.current = null;
     framesRef.current = [];
+    captureRef.current = [];
     waveformRef.current?.clear();
 
     const ensureProvider = async () => {
@@ -278,14 +325,27 @@ export function VitalScanScreen({
       if (provider && "ensureLandmarker" in provider) {
         await provider.ensureLandmarker(); // warm up the MediaPipe model
       }
+      // Finger mode: auto-enable the torch (a fingertip-over-lens PPG needs the
+      // flood-lit red channel; manual torch is easy to forget and gives a dark,
+      // non-pulsatile frame → null HR). Best-effort; manual toggle still works.
+      if (state.facing === "environment" && videoTrackRef.current && !torchOnRef.current) {
+        const ok = await setTorch(videoTrackRef.current, true);
+        if (ok) {
+          torchOnRef.current = true;
+          window.setTimeout(() => setTorchOn(true), 0);
+        }
+      }
     };
 
     void ensureProvider()
       .then(async () => {
         dispatch({ type: "begin_countdown" });
         await runGate(); // 3-2-1 + stability hold
-        // Discard gate warmup frames; the 20s measurement starts fresh.
+        // Discard gate warmup frames; the 20s measurement starts fresh. The first
+        // ~1.5 s of measurement frames are also skipped downstream by the HR
+        // estimator's warmup trim (contact-stabilisation for finger).
         framesRef.current = [];
+        captureRef.current = [];
         stableSinceRef.current = null;
         lastHintRef.current = HINT_NONE;
         dispatch({ type: "start_scan" });
@@ -549,6 +609,15 @@ export function VitalScanScreen({
       ) : null}
       {state.qualityHint === "motion" ? (
         <Banner tone="amber">{translate(language, "unone.scan.motion")}</Banner>
+      ) : null}
+      {state.qualityHint === "finger_cover_camera" ? (
+        <Banner tone="amber">{translate(language, "unone.scan.fingerCoverCamera")}</Banner>
+      ) : null}
+      {state.qualityHint === "finger_press_lighter" ? (
+        <Banner tone="amber">{translate(language, "unone.scan.fingerPressLighter")}</Banner>
+      ) : null}
+      {state.qualityHint === "finger_warm_hands" ? (
+        <Banner tone="amber">{translate(language, "unone.scan.fingerWarmHands")}</Banner>
       ) : null}
       {state.status === "failed" && !state.result && state.error === "model_load_failed" ? (
         <Banner tone="amber">{translate(language, "unone.scan.modelLoadError")}</Banner>

@@ -282,6 +282,106 @@ export function varianceOf(signal: number[]): number {
   return signal.reduce((a, b) => a + (b - mean) * (b - mean), 0) / signal.length;
 }
 
+/** Reverse a signal in place-safe fashion (returns a new array). Used by the
+ * zero-phase filter to run the biquad backward, cancelling its phase lag. */
+function reverseSignal(signal: number[]): number[] {
+  const out = new Array<number>(signal.length);
+  for (let i = 0; i < signal.length; i++) out[i] = signal[signal.length - 1 - i];
+  return out;
+}
+
+/**
+ * Zero-phase bandpass: run the 2nd-order biquad forward, reverse the output, run
+ * it again, reverse back. This doubles the effective order (4th-order, 24 dB/oct
+ * roll-off) and — crucially — cancels the biquad's phase lag, so peak locations
+ * in the filtered signal are not shifted. A single forward biquad shifts peak
+ * timing by a frequency-dependent amount, which corrupts the autocorrelation
+ * lag→Hz mapping. Required for accurate HR/RR estimation.
+ */
+export function bandpassZeroPhase(
+  signal: number[],
+  sampleRate: number,
+  lowHz: number,
+  highHz: number,
+): number[] {
+  if (signal.length === 0 || sampleRate <= 0) return signal;
+  const fwd = bandpass(signal, sampleRate, lowHz, highHz);
+  const rev = reverseSignal(fwd);
+  const fwd2 = bandpass(rev, sampleRate, lowHz, highHz);
+  return reverseSignal(fwd2);
+}
+
+/** Cascade N identical bandpass biquads for an arbitrarily steep roll-off. Each
+ * stage is 12 dB/oct; two stages (default) = 24 dB/oct. */
+export function cascadeBandpass(
+  signal: number[],
+  sampleRate: number,
+  lowHz: number,
+  highHz: number,
+  stages = 2,
+): number[] {
+  let out = signal;
+  for (let i = 0; i < stages; i++) out = bandpass(out, sampleRate, lowHz, highHz);
+  return out;
+}
+
+/**
+ * Smoothness-priors detrending (Tarvainen et al. 2002). Removes DC and slow
+ * drift while preserving the heart-rate band — the moving-average `detrend`
+ * above is a HIGH-PASS whose corner (~fs/window) sits inside the 0.75–1.5 Hz HR
+ * band for short windows, eroding the very signal we then try to detect.
+ *
+ * detrended = x − (I + λ²·DᵀD)⁻¹·x
+ *
+ * where D is the first-order difference operator (so DᵀD is tridiagonal, the
+ * discrete 1D Laplacian: main diagonal [1,2,…,2,1], off-diagonals −1). The
+ * penalised smoother (I + λ²·DᵀD)⁻¹ is a low-pass with cutoff ≈ fs/(2πλ); with
+ * λ = 50 at 30 fps that is ~0.1 Hz — far below 0.7 Hz, so the HR band passes
+ * untouched while DC, linear drift, and slow illumination changes are removed.
+ *
+ * Solved with the O(N) Thomas algorithm (tridiagonal, no pivoting needed — the
+ * matrix is symmetric positive-definite and diagonally dominant). For N < 3
+ * (degenerate capture) we fall back to plain mean removal.
+ */
+export function spaDetrend(signal: number[], lambda = 50): number[] {
+  const n = signal.length;
+  if (n === 0) return [];
+  if (n < 3 || lambda <= 0) {
+    const mean = signal.reduce((a, b) => a + b, 0) / n;
+    return signal.map((v) => v - mean);
+  }
+
+  // Tridiagonal A = I + λ²·DᵀD. DᵀD main diag = [1,2,…,2,1], off-diag = -1.
+  const l2 = lambda * lambda;
+  // Sub-diagonal (a), main (b), super-diagonal (c) — Thomas notation.
+  const a = new Array<number>(n); // a[0] unused
+  const b = new Array<number>(n);
+  const c = new Array<number>(n); // c[n-1] unused
+  for (let i = 0; i < n; i++) {
+    b[i] = 1 + l2 * (i === 0 || i === n - 1 ? 1 : 2);
+    a[i] = i > 0 ? -l2 : 0;
+    c[i] = i < n - 1 ? -l2 : 0;
+  }
+
+  // Thomas algorithm: solve A·z = signal for the smooth component z.
+  const rhs = signal.slice();
+  for (let i = 1; i < n; i++) {
+    const m = a[i] / b[i - 1];
+    b[i] -= m * c[i - 1];
+    rhs[i] -= m * rhs[i - 1];
+  }
+  const z = new Array<number>(n);
+  z[n - 1] = rhs[n - 1] / b[n - 1];
+  for (let i = n - 2; i >= 0; i--) {
+    z[i] = (rhs[i] - c[i] * z[i + 1]) / b[i];
+  }
+
+  // detrended = x − z (the high-pass residual).
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) out[i] = signal[i] - z[i];
+  return out;
+}
+
 /**
  * Estimate respiratory rate (breaths/min) from a PPG green-channel trace.
  *

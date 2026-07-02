@@ -42,6 +42,10 @@ export interface FingerQualityInput {
   prevRed: number | null;
   /** Current frame DC brightness, 0..255. */
   brightness: number;
+  /** Current frame per-channel means (contact + ambient-leak gating). */
+  redMean: number;
+  greenMean: number;
+  blueMean: number;
 }
 
 export interface FingerQuality {
@@ -103,7 +107,7 @@ function detrend(xs: number[], windowSize = 15): number[] {
 export function computeFingerSignalQuality(
   input: FingerQualityInput,
 ): FingerQuality {
-  const { recentReds, prevRed, brightness } = input;
+  const { recentReds, prevRed, brightness, redMean, greenMean, blueMean } = input;
 
   // --- motionScore: instantaneous frame-to-frame delta ----------------------
   let motionScore = 0.9;
@@ -131,14 +135,35 @@ export function computeFingerSignalQuality(
     );
   }
 
-  // --- lightingScore: DC brightness in usable band --------------------------
-  let lightingScore = 0.3;
-  if (brightness < 50 || brightness > 250) {
-    lightingScore = 0.2;
-  } else if (brightness < 80) {
-    lightingScore = 0.6;
+  // --- lightingScore: contact quality + DC brightness + ambient leak --------
+  // A fingertip pressed over the lens with the torch on floods the frame red
+  // (redMean ~200–254) and suppresses green/blue (the lens is occluded). The old
+  // 3-bucket brightness constant could not distinguish "good contact" from
+  // "ambient light leaking past a loose finger". The frame gate (HR estimator
+  // drops lighting<0.4) is what stops bad-contact frames from contaminating the
+  // pulse trace, so this score must be honest about contact.
+  let lightingScore: number;
+  // Contact quality from the red channel: too low = ambient leak (finger not
+  // sealing the lens), too high = saturation/occlusion (pressed too hard or torch
+  // clipping). Map 200..254 → good, with roll-off outside.
+  if (redMean < 200) {
+    // Ambient leak: red not dominant. Worse if green/blue are also high (light
+    // is getting in around the finger).
+    const leak = (greenMean + blueMean) / 2;
+    lightingScore = clamp01(0.35 * (redMean / 200) - (leak / 255) * 0.3);
+  } else if (redMean > 254) {
+    // Saturation / over-press: red pinned at the ceiling (no AC room for pulse).
+    lightingScore = 0.25;
   } else {
-    lightingScore = 0.9;
+    // Good contact. Mild penalty if ambient green/blue are creeping in.
+    const leak = (greenMean + blueMean) / 2;
+    lightingScore = clamp01(0.9 - (leak / 255) * 0.4);
+  }
+  // DC brightness still gates total illumination (torch off + dark finger).
+  if (brightness < 50 || brightness > 250) {
+    lightingScore = Math.min(lightingScore, 0.2);
+  } else if (brightness < 80) {
+    lightingScore = Math.min(lightingScore, 0.6);
   }
 
   return { motionScore, stability, pulsatility, lightingScore };

@@ -24,8 +24,18 @@ export type ScanStatus =
   | "synced";
 
 /** Transient per-frame quality hint, decoupled from the scan lifecycle so a
- * missing face / bad light / motion never permanently overrides "scanning". */
-export type QualityHint = "no_face" | "low_light" | "motion" | null;
+ * missing face / bad light / motion never permanently overrides "scanning".
+ * The `finger_*` hints are finger-mode contact-quality cues derived from the
+ * per-frame red/green/blue means (ambient leak, over-press saturation, cold
+ * finger / weak pulsatility). */
+export type QualityHint =
+  | "no_face"
+  | "low_light"
+  | "motion"
+  | "finger_cover_camera"
+  | "finger_press_lighter"
+  | "finger_warm_hands"
+  | null;
 
 export interface CameraScanState {
   status: ScanStatus;
@@ -56,6 +66,9 @@ export type CameraScanAction =
   | { type: "no_face" }
   | { type: "low_light" }
   | { type: "motion" }
+  | { type: "finger_cover_camera" }
+  | { type: "finger_press_lighter" }
+  | { type: "finger_warm_hands" }
   | { type: "quality_ok" }
   | { type: "switch_camera" }
   | { type: "scan_complete"; result: VitalScanResult }
@@ -142,6 +155,12 @@ export function cameraScanReducer(
       return { ...state, qualityHint: "low_light" };
     case "motion":
       return { ...state, qualityHint: "motion" };
+    case "finger_cover_camera":
+      return { ...state, qualityHint: "finger_cover_camera" };
+    case "finger_press_lighter":
+      return { ...state, qualityHint: "finger_press_lighter" };
+    case "finger_warm_hands":
+      return { ...state, qualityHint: "finger_warm_hands" };
     case "quality_ok":
       return { ...state, qualityHint: null };
     case "switch_camera": {
