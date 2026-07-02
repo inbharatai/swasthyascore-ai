@@ -134,9 +134,11 @@ describe("rPPG signal pipeline", () => {
       "signal",
       FIXED_NOW,
     );
-    // RR may be null even in face mode (best-effort), but is ALWAYS null for finger.
+    // Finger mode never produces RR. Face mode ran the full pipeline and produced
+    // a heart rate (the no-breath fixture here yields no RR — the 0.25 Hz breath
+    // test below covers the face RR-produced direction).
     expect(fingerResult.respiratory_rate_bpm).toBeNull();
-    void faceResult;
+    expect(faceResult.heart_rate_bpm).not.toBeNull();
   });
 });
 

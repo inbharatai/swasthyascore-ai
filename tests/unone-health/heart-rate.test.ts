@@ -97,12 +97,10 @@ describe("estimateHeartRateFromFrames — end-to-end", () => {
       buildInput(rgbPulse(1.2, 20), "front_face", { motion }),
     );
     // Either a correct-ish HR or an honest null — never a fabricated wrong one.
-    if (est.bpm != null) {
-      expect(est.bpm).toBeGreaterThanOrEqual(60);
-      expect(est.bpm).toBeLessThanOrEqual(90);
-    } else {
-    expect(est.bpm).toBeNull();
-    }
+    // (A lone `expect(...).toBeNull()` inside an `else` is tautological — it
+    // holds whenever bpm is already null — so assert the real contract in one
+    // shot: the result is null OR inside the plausible band.)
+    expect(est.bpm === null || (est.bpm >= 60 && est.bpm <= 90)).toBe(true);
   });
 
   it("locks the fundamental of a 1.2 Hz pulse train (no halving to 36 BPM)", () => {
@@ -127,9 +125,11 @@ describe("estimateHeartRateFromFrames — end-to-end", () => {
   });
 
   it("a prior BPM does not override a high-SNR estimate (no false halving)", () => {
-    // Clean 2.4 Hz (144 BPM). The estimator is confident (high SNR), so even
-    // with priorBpm=72 it must NOT halve to 72 — priors only reconcile when our
-    // own SNR is weak.
+    // Clean 2.4 Hz (144 BPM) at high SNR. The prior-reconciliation block only
+    // runs when snr < 0.3, so here it is deliberately NOT consulted — this proves
+    // a confident estimate is never overridden by a prior. The low-SNR path
+    // returns an honest null rather than a fabricated number (see the flat +
+    // motion-transient tests), so a wrong prior can never invent a rate.
     const est = estimateHeartRateFromFrames(
       buildInput(rgbPulse(2.4, 20), "front_face", { priorBpm: 72 }),
     );

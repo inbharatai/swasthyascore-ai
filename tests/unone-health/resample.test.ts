@@ -61,7 +61,11 @@ describe("resampleUniform (monotone cubic Hermite)", () => {
 
   it("collapses duplicate frames before interpolating", () => {
     // Two frames at the same timestamp (a rAF dup) must not create a zero-Δt
-    // knot that breaks the interpolator; the duplicate is dropped.
+    // knot that breaks the interpolator; the duplicate is dropped. The
+    // load-bearing contract is that the interpolator produces ONLY finite
+    // values (a zero-Δt knot would yield NaN/Infinity from a division by zero
+    // in the monotone-slope step). Spectral recovery of 1.2 Hz is covered by
+    // the 20 s test above — this 1.3 s fixture is too short for Welch to resolve.
     const values: number[] = [];
     const tsMs: number[] = [];
     for (let i = 0; i < 40; i++) {
@@ -74,6 +78,7 @@ describe("resampleUniform (monotone cubic Hermite)", () => {
     const res = resampleUniform(values, tsMs, FS);
     expect(res.duplicates).toBeGreaterThanOrEqual(1);
     expect(res.values.length).toBeGreaterThan(30);
+    expect(res.values.every((v) => Number.isFinite(v))).toBe(true);
   });
 
   it("returns an empty result for < 4 samples", () => {

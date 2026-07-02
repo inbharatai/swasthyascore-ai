@@ -311,20 +311,6 @@ export function bandpassZeroPhase(
   return reverseSignal(fwd2);
 }
 
-/** Cascade N identical bandpass biquads for an arbitrarily steep roll-off. Each
- * stage is 12 dB/oct; two stages (default) = 24 dB/oct. */
-export function cascadeBandpass(
-  signal: number[],
-  sampleRate: number,
-  lowHz: number,
-  highHz: number,
-  stages = 2,
-): number[] {
-  let out = signal;
-  for (let i = 0; i < stages; i++) out = bandpass(out, sampleRate, lowHz, highHz);
-  return out;
-}
-
 /**
  * Smoothness-priors detrending (Tarvainen et al. 2002). Removes DC and slow
  * drift while preserving the heart-rate band — the moving-average `detrend`

@@ -88,6 +88,10 @@ export function VitalScanScreen({
   const skipRef = useRef<boolean>(false);
   const lastHintRef = useRef<string>(HINT_NONE);
   const torchOnRef = useRef<boolean>(false);
+  // Timestamp of the last REAL (non-null) frame sample. A null sample is
+  // ambiguous — it can be a benign rAF dedup duplicate OR a genuine no-face /
+  // not-ready — so the hint logic debounces "no_face" against this clock.
+  const lastRealSampleAtRef = useRef<number>(0);
   const [state, dispatch] = useReducer(cameraScanReducer, initialCameraScanState);
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
@@ -177,6 +181,16 @@ export function VitalScanScreen({
 
   const pushHint = useCallback(
     (sample: RppgFrameSample | null) => {
+      // A null sample is EITHER a duplicate video frame (rAF outran the camera —
+      // benign, ~half of frames on a 60Hz display driving a 30fps camera) OR a
+      // genuine no-face / not-ready. They are indistinguishable at the call site,
+      // so we debounce against `lastRealSampleAtRef`: a real sample refreshes it,
+      // and a null only surfaces "no_face" when no real sample has arrived for
+      // 300ms (sustained no-face). Dedup duplicates therefore never flicker the
+      // banner. Finger mode has no face to lose, so a null there never announces
+      // "no_face" — it keeps the last contact-derived hint.
+      if (sample) lastRealSampleAtRef.current = performance.now();
+
       // Finger-mode contact hints are derived from the per-frame channel means
       // (real, not dummies): ambient leak (red<200), saturation/over-press
       // (red>254), weak pulse (low pulsatility carried in leftRightConsistency).
@@ -197,13 +211,22 @@ export function VitalScanScreen({
         dispatch({ type: hint });
         return;
       }
-      let hint:
-        | "no_face"
-        | "low_light"
-        | "motion"
-        | "quality_ok";
-      if (!sample) hint = "no_face";
-      else if (sample.lightingScore < 0.5) hint = "low_light";
+
+      if (!sample) {
+        // Finger mode: a null is a dedup / not-ready — there is no face, so
+        // never announce "no_face"; keep the last contact-derived hint.
+        if (state.facing === "environment") return;
+        // Face mode: only announce "no_face" when nulls are sustained (>300ms
+        // with no real sample), so dedup duplicates don't flicker the banner.
+        if (performance.now() - lastRealSampleAtRef.current <= 300) return;
+        if (lastHintRef.current === "no_face") return;
+        lastHintRef.current = "no_face";
+        dispatch({ type: "no_face" });
+        return;
+      }
+
+      let hint: "low_light" | "motion" | "quality_ok";
+      if (sample.lightingScore < 0.5) hint = "low_light";
       else if (sample.motionScore < 0.5) hint = "motion";
       else hint = "quality_ok";
       if (lastHintRef.current === hint) return;
@@ -402,9 +425,15 @@ export function VitalScanScreen({
 
   const toggleTorch = useCallback(async () => {
     const on = !torchOnRef.current;
+    // Apply the hardware constraint first; only mirror its real result into the
+    // UI state. The old code set the UI optimistically and ignored the return
+    // value, so a rejected constraint left the button showing the wrong state
+    // (and could re-light the torch on the next finger scan via the
+    // `!torchOnRef.current` auto-enable check).
+    const ok = await setTorch(videoTrackRef.current, on);
+    if (!ok) return;
     torchOnRef.current = on;
-    setTorchOn(on);
-    await setTorch(videoTrackRef.current, on);
+    window.setTimeout(() => setTorchOn(on), 0);
   }, []);
 
   const handleStart = useCallback(() => {

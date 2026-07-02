@@ -1,21 +1,21 @@
 /**
  * Multi-channel rPPG signal extraction. Plain green-average rPPG cannot cancel
  * ambient-light flicker, auto-white-balance drift, or specular reflections
- * because it discards the R and B channels. CHROM (de Haan & Jeanne 2013) and
- * POS (Wang et al. 2017, "Algorithmic Principles of Remote-PPG") combine the
- * per-frame R/G/B means with anti-correlated weights so the common-mode
- * (illumination) component cancels while the pulse (which is anti-correlated
- * across channels in the projection plane) is retained.
+ * because it discards the R and B channels. POS (Wang et al. 2017,
+ * "Algorithmic Principles of Remote-PPG") combines the per-frame R/G/B means
+ * with anti-correlated weights so the common-mode (illumination) component
+ * cancels while the pulse (which is anti-correlated across channels in the
+ * projection plane) is retained.
  *
- * Reported MAE on UBFC-RPPG: green-only ~19.8 BPM → POS ~4.0, CHROM ~3.98.
- * Both need only per-frame channel means — no per-pixel data — so they are
- * implementable from what the frame providers already capture.
+ * Reported MAE on UBFC-RPPG: green-only ~19.8 BPM → POS ~4.0. (CHROM, de Haan &
+ * Jeanne 2013, is a related chrominance method at similar accuracy; it is NOT
+ * wired into this pipeline — POS alone is the face-mode estimator.) POS needs
+ * only per-frame channel means — no per-pixel data — so it runs on what the
+ * frame providers already capture.
  *
  * Pure (no DOM). The output is a 1D pulse trace; downstream code SPA-detrends
  * and bandpasses it.
  */
-
-import { bandpass } from "./signal";
 
 function std(x: number[]): number {
   if (x.length === 0) return 0;
@@ -140,56 +140,4 @@ function posWindowOverlap(
     out[start + i] = s1[i] + alpha * s2[i] - meanH;
   }
   return out;
-}
-
-/**
- * CHROM (de Haan & Jeanne 2013). Chrominance-based:
- *   X = 3·Rn − 2·Gn,   Y = 1.5·Rn + Gn − 1.5·Bn
- * Bandpass both (HR band), then S = Xf − α·Yf with α = std(Xf)/std(Yf). Motion
- * drives X and Y in-phase; pulse drives them anti-phase; the α-subtraction
- * cancels the in-phase (motion/illumination) component. Best cross-skin-tone
- * robustness per Nowara 2020, so used as the cross-check estimator.
- *
- * `lowHz`/`highHz` default to the HR band (0.7–2.5 Hz).
- */
-export function chromSignal(
-  r: number[],
-  g: number[],
-  b: number[],
-  sampleRate: number,
-  lowHz = 0.7,
-  highHz = 2.5,
-): number[] {
-  const n = Math.min(r.length, g.length, b.length);
-  if (n < 8 || sampleRate <= 0) return [];
-  const L = Math.max(8, Math.round(sampleRate * 1.6));
-  const step = Math.max(1, Math.floor(L / 2));
-  const out = new Array<number>(n).fill(0);
-  const norm = new Array<number>(n).fill(0);
-  const w = hann(L);
-  for (let t = 0; t + L <= n; t += step) {
-    const { rn, gn, bn } = normalizeChannels(r, g, b, t, L);
-    const xs = new Array<number>(L);
-    const ys = new Array<number>(L);
-    for (let i = 0; i < L; i++) {
-      xs[i] = 3 * rn[i] - 2 * gn[i];
-      ys[i] = 1.5 * rn[i] + gn[i] - 1.5 * bn[i];
-    }
-    const xf = bandpass(xs, sampleRate, lowHz, highHz);
-    const yf = bandpass(ys, sampleRate, lowHz, highHz);
-    const sdy = std(yf);
-    if (sdy <= 1e-9) continue;
-    const alpha = std(xf) / sdy;
-    const meanS = xf.reduce((a, v, i) => a + (v - alpha * yf[i]), 0) / L;
-    for (let i = 0; i < L; i++) {
-      const s = xf[i] - alpha * yf[i] - meanS;
-      out[t + i] += s * w[i];
-      norm[t + i] += w[i];
-    }
-  }
-  const result = new Array<number>(n);
-  for (let i = 0; i < n; i++) {
-    result[i] = norm[i] > 1e-9 ? out[i] / norm[i] : 0;
-  }
-  return result;
 }

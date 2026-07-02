@@ -128,9 +128,13 @@ export function estimateHeartRateFromFrames(
   const kts = keptIdx.map((i) => timestampsMs[i]);
 
   // (2) Resample onto a uniform grid at the achieved cadence (capped 20–60 Hz).
-  const median = dupGap.medianPeriodMs || kts[kts.length - 1] - kts[0] >= 0
-    ? (kts[kts.length - 1] - kts[0]) / Math.max(1, kts.length - 1)
-    : 33.33;
+  // Use the MEDIAN frame period (robust to a single dropped-frame burst) — not
+  // the span average, which a 2 s gap inflates from 33 ms to ~50 ms and would
+  // downsample the signal by a third. Fall back to the span average, then 30 fps.
+  // (Explicit `||` chain — the prior `a || b >= 0 ? c : d` form parsed as
+  // `(a || (b >= 0)) ? c : d` and silently discarded the median every time.)
+  const spanAvg = (kts[kts.length - 1] - kts[0]) / Math.max(1, kts.length - 1);
+  const median = dupGap.medianPeriodMs || spanAvg || 33.33;
   let targetHz = Math.round(1000 / Math.max(1, median));
   if (targetHz < 20) targetHz = 20;
   if (targetHz > 60) targetHz = 60;

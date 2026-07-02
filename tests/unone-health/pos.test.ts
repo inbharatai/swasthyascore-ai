@@ -68,7 +68,10 @@ describe("POS multi-channel extraction", () => {
     const n = FS * 10;
     const flat = new Array(n).fill(128);
     const pulse = posSignal(flat, flat, flat, FS);
-    // All zeros — POS has no chrominance to project. Downstream gates reject.
+    // All zeros — POS has no chrominance to project (the window's S2 has zero
+    // variance, so the window is skipped). The HR pipeline returns null for a
+    // flat capture separately (see heart-rate.test.ts); this test only asserts
+    // the trace is degenerate, not that a downstream gate fired here.
     expect(pulse.every((v) => Math.abs(v) < 1e-9)).toBe(true);
   });
 });
