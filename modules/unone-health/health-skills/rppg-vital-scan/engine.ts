@@ -13,18 +13,16 @@ import {
 
 /**
  * Engine contract. The runtime picks the engine; the UI never calls OpenAI for
- * vitals. `id` is surfaced on the result so a mock result can never be mistaken
- * for a real measurement.
+ * vitals. `id` is surfaced on the result so a synthetic test fixture can never
+ * be mistaken for a real on-device measurement.
  *
- * Two ways to use an engine:
- *  1. `engine.scan(params)` — one-shot. Mock returns instantly; the real engine
- *     drives its own real-time loop via a FrameSampler.
- *  2. The UI owns the loop and calls the pure helpers (`synthesizeMockFrame`,
- *     `aggregateFrameSamples`, `finalizeVitalScan`) directly. This keeps the UI
- *     timer honest in both modes and lets tests run with zero real timers.
+ * The UI owns the live camera loop and calls the pure helpers
+ * (`aggregateFrameSamples`, `finalizeVitalScan`) directly, feeding real frames
+ * captured from the phone camera. This keeps the UI timer honest and lets tests
+ * run with zero real timers using synthetic signal fixtures.
  */
 export interface RppgEngine {
-  readonly id: "mock" | "signal";
+  readonly id: "signal";
   scan(params: RppgScanParams): Promise<RppgScanSamples>;
 }
 
@@ -46,7 +44,7 @@ export interface RppgScanSamples {
   sampleRate: number;
 }
 
-/** A single per-frame measurement produced by a sampler (real or mock). */
+/** A single per-frame measurement produced by a camera sampler. */
 export interface RppgFrameSample {
   greenMean: number;
   timestampMs: number;
@@ -105,7 +103,7 @@ export function aggregateFrameSamples(
 export function finalizeVitalScan(
   samples: RppgScanSamples,
   params: RppgScanParams,
-  engineId: "mock" | "signal",
+  engineId: "signal",
   nowIso: string,
 ): VitalScanResult {
   const confidenceBlock = buildConfidenceBlock({
@@ -162,52 +160,4 @@ function estimateRespiratoryRate(samples: RppgScanSamples): number | null {
   const rpm = Math.round(hz * 60);
   if (rpm < 8 || rpm > 40) return null;
   return rpm;
-}
-
-/** Deterministic mock frame at time `tSeconds` for a given heart rate. */
-export function synthesizeMockFrame(
-  tSeconds: number,
-  heartRate: number,
-): RppgFrameSample {
-  const heartHz = heartRate / 60;
-  const pulse = Math.sin(2 * Math.PI * heartHz * tSeconds) * 0.06;
-  const drift = Math.sin(tSeconds * 0.2) * 0.01;
-  const noise = (pseudoRandom(Math.floor(tSeconds * 30)) - 0.5) * 0.004;
-  return {
-    greenMean: 128 + pulse + drift + noise,
-    timestampMs: Math.round(tSeconds * 1000),
-    faceStability: 0.9,
-    motionScore: 0.92,
-    lightingScore: 0.86,
-    leftRightConsistency: 0.88,
-  };
-}
-
-function pseudoRandom(seed: number): number {
-  const x = Math.sin(seed * 99.13) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-/**
- * MockRppgEngine — DEMO / DEV ONLY. Produces a deterministic, plausible
- * synthetic green-channel trace so the UI and tests exercise the full pipeline.
- * Every result is tagged `engine: "mock"` and must never be presented as a
- * real vital measurement.
- */
-export class MockRppgEngine implements RppgEngine {
-  readonly id = "mock" as const;
-
-  constructor(private readonly seedHeartRate = 72) {}
-
-  async scan(params: RppgScanParams): Promise<RppgScanSamples> {
-    const fps = 30;
-    const frameCount = Math.max(8, Math.round(fps * params.durationSeconds));
-    const frames: RppgFrameSample[] = [];
-    for (let i = 0; i < frameCount; i++) {
-      frames.push(synthesizeMockFrame(i / fps, this.seedHeartRate));
-      if (i % 10 === 0) params.onProgress?.(i / frameCount);
-    }
-    params.onProgress?.(1);
-    return aggregateFrameSamples(frames);
-  }
 }

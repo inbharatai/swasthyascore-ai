@@ -239,11 +239,13 @@ function HomeView({
   online,
   onTabChange,
   onLanguageChange,
+  onMeasureHeartRate,
 }: {
   language: Language;
   online: boolean;
   onTabChange: (tab: AppTab) => void;
   onLanguageChange: (language: Language) => void;
+  onMeasureHeartRate: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -390,6 +392,28 @@ function HomeView({
         </div>
       </section>
 
+      <section className="overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,#7f1d1d_0%,#be123c_45%,#0f766e_100%)] p-5 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="inline-flex items-center gap-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              <HeartPulse className="h-7 w-7" />
+              {translate(language, "unone.heart.headline")}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-white/85">
+              {translate(language, "unone.heart.body")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onMeasureHeartRate}
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-rose-800 shadow-sm"
+          >
+            <HeartPulse className="h-4 w-4" />
+            {translate(language, "unone.heart.cta")}
+          </button>
+        </div>
+      </section>
+
       <ProductMediaShowcase language={language} />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -412,6 +436,10 @@ export function HomeDashboard({
   onLanguageChange,
 }: HomeDashboardProps) {
   const clientReady = useClientReady();
+  const [healthInitialSection, setHealthInitialSection] = useState<
+    "lab" | "scan" | "symptoms" | "advisory" | "timeline"
+  >("lab");
+  const [healthMountKey, setHealthMountKey] = useState(0);
   const [formData, setFormData] = useState<HealthFormData>(EMPTY_HEALTH_FORM);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof HealthFormData, TranslationKey>>
@@ -485,6 +513,13 @@ export function HomeDashboard({
     setAiExplanation(null);
     setAiError(null);
     window.localStorage.removeItem(storageKey);
+  }
+
+  /** Deep-link from the landing "Measure heart rate" CTA straight into the scan. */
+  function openHeartRateScan() {
+    setHealthInitialSection("scan");
+    setHealthMountKey((k) => k + 1);
+    onTabChange("ai");
   }
 
   function handleCalculate() {
@@ -589,6 +624,7 @@ export function HomeDashboard({
           online={online}
           onTabChange={onTabChange}
           onLanguageChange={onLanguageChange}
+          onMeasureHeartRate={openHeartRateScan}
         />
       ) : null}
 
@@ -684,7 +720,12 @@ export function HomeDashboard({
       ) : null}
 
       {activeTab === "ai" ? (
-        <UnoOneHealthView language={language} online={online} />
+        <UnoOneHealthView
+          key={healthMountKey}
+          language={language}
+          online={online}
+          initialSection={healthInitialSection}
+        />
       ) : null}
     </main>
   );

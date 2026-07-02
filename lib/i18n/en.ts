@@ -625,11 +625,15 @@ export const en = {
   "unone.showcase.lab":
     "AI reads your lab report and flags values that need a doctor's review.",
   "unone.showcase.scan":
-    "On-device camera vital scan for heart and breathing rate.",
+    "Camera heart-rate scan — detect heart and breathing rate on-device.",
   "unone.showcase.symptoms":
     "Describe symptoms in your words or by voice; get severity and red flags.",
   "unone.showcase.advisory":
     "A combined, safe health advisory with a lifestyle and diet plan.",
+  "unone.heart.headline": "Camera Heart-Rate Scan",
+  "unone.heart.body":
+    "Detect your heart rate using only your phone camera (rPPG). On-device and private — no video is uploaded.",
+  "unone.heart.cta": "Measure heart rate",
   "unone.consentRequired": "Please grant consent to continue.",
   "unone.consentLab": "I consent to AI analysis of my lab report.",
   "unone.consentCamera": "I consent to a camera vital scan on this device.",
@@ -652,7 +656,7 @@ export const en = {
   "unone.scan.stop": "Stop camera",
   "unone.scan.switch": "Switch camera",
   "unone.scan.front": "Front camera: Face scan",
-  "unone.scan.rear": "Rear camera scan",
+  "unone.scan.rear": "Rear camera: Place your fingertip over the lens",
   "unone.scan.timer": "Scan time",
   "unone.scan.repeat": "Repeat scan",
   "unone.scan.save": "Save result",
@@ -672,10 +676,9 @@ export const en = {
   "unone.scan.hr": "Heart rate",
   "unone.scan.rr": "Respiratory rate",
   "unone.scan.confidence": "Confidence",
-  "unone.scan.mockNote": "Demo mode (mock engine) — not a real measurement.",
   "unone.scan.experimental": "Experimental, not clinically validated.",
-  "unone.scan.engine.real": "Live signal engine",
-  "unone.scan.engine.mock": "Mock engine (demo)",
+  "unone.scan.modelLoadError":
+    "The camera model failed to load. This scan needs internet on first use — please retry online.",
   "unone.symptoms.placeholder": "Describe symptoms in your own words or voice…",
   "unone.symptoms.record": "Add voice note (text)",
   "unone.symptoms.submit": "Analyze symptoms",

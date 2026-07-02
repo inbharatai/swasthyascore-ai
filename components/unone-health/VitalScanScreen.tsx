@@ -15,7 +15,6 @@ import {
   finalizeVitalScan,
   initialCameraScanState,
   isoNow,
-  synthesizeMockFrame,
   type CameraFacing,
   type CameraScanState,
   type RppgFrameSample,
@@ -24,14 +23,11 @@ import {
 import type { Language } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import { getSwasthyakAdapter } from "@/modules/unone-health/adapters/swasthyak-adapter/SwasthyakAdapter";
+import type {
+  FaceRoiFrameProvider,
+  FingerFrameProvider,
+} from "@/modules/unone-health/health-skills/rppg-vital-scan/browserRppg";
 
-const ENGINE =
-  (process.env.NEXT_PUBLIC_UNONE_RPPG_ENGINE ?? "mock") === "real"
-    ? "real"
-    : "mock";
-// `finalizeVitalScan` expects the engine id ("mock" | "signal"), not the UI
-// selector ("real" | "mock"). Map here so the two stay decoupled.
-const ENGINE_ID: "mock" | "signal" = ENGINE === "real" ? "signal" : "mock";
 const DURATION_SECONDS = 20;
 
 interface VitalScanScreenProps {
@@ -52,7 +48,7 @@ export function VitalScanScreen({
   const framesRef = useRef<RppgFrameSample[]>([]);
   const startRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
-  const providerRef = useRef<{ sample: () => RppgFrameSample | null; release: () => void } | null>(null);
+  const providerRef = useRef<FaceRoiFrameProvider | FingerFrameProvider | null>(null);
   const [state, dispatch] = useReducer(cameraScanReducer, initialCameraScanState);
 
   const stopCamera = useCallback(() => {
@@ -94,11 +90,11 @@ export function VitalScanScreen({
 
   const completeScan = useCallback(() => {
     const samples = aggregateFrameSamples(framesRef.current);
-    const cameraMode = cameraFacingToMode(state.facing, false);
+    const cameraMode = cameraFacingToMode(state.facing, true);
     const result = finalizeVitalScan(
       samples,
       { cameraMode, durationSeconds: DURATION_SECONDS },
-      ENGINE_ID,
+      "signal",
       isoNow(),
     );
     dispatch({ type: "scan_complete", result });
@@ -119,46 +115,53 @@ export function VitalScanScreen({
     dispatch({ type: "start_scan" });
 
     const ensureProvider = async () => {
-      if (ENGINE === "real" && !providerRef.current && videoRef.current) {
-        const mod = await import(
-          "@/modules/unone-health/health-skills/rppg-vital-scan/browserRppg"
-        );
-        providerRef.current = new mod.FaceRoiFrameProvider(videoRef.current);
-        await providerRef.current.sample(); // warm up landmarker
+      if (!videoRef.current) return;
+      const mod = await import(
+        "@/modules/unone-health/health-skills/rppg-vital-scan/browserRppg"
+      );
+      // Front camera = face rPPG (HR + RR); rear camera = fingertip rPPG (HR only).
+      providerRef.current =
+        state.facing === "environment"
+          ? new mod.FingerFrameProvider(videoRef.current)
+          : new mod.FaceRoiFrameProvider(videoRef.current);
+      const provider = providerRef.current;
+      if (provider && "ensureLandmarker" in provider) {
+        await provider.ensureLandmarker(); // warm up the MediaPipe model
       }
     };
 
-    void ensureProvider().then(() => {
-      // Start the sampling clock AFTER warmup so the 20s window contains 20s
-      // of actual frames (not warmup + ~17s).
-      startRef.current = performance.now();
-      const tick = () => {
-        const elapsed = (performance.now() - startRef.current) / 1000;
-        const fraction = Math.min(1, elapsed / DURATION_SECONDS);
+    void ensureProvider()
+      .then(() => {
+        // Start the sampling clock AFTER warmup so the 20s window contains 20s
+        // of actual frames (not warmup + ~17s).
+        startRef.current = performance.now();
+        const tick = () => {
+          const elapsed = (performance.now() - startRef.current) / 1000;
+          const fraction = Math.min(1, elapsed / DURATION_SECONDS);
 
-        let sample: RppgFrameSample | null = null;
-        if (ENGINE === "real") {
-          sample = providerRef.current?.sample() ?? null;
+          const sample = providerRef.current?.sample() ?? null;
           // quality hint is decoupled from scan status — a transient missing
           // face no longer permanently hides the progress bar.
           dispatch({ type: sample ? "quality_ok" : "no_face" });
-        } else {
-          sample = synthesizeMockFrame(elapsed, 72);
-          dispatch({ type: "quality_ok" });
-        }
-        if (sample) framesRef.current.push(sample);
+          if (sample) framesRef.current.push(sample);
 
-        dispatch({ type: "progress", fraction });
+          dispatch({ type: "progress", fraction });
 
-        if (elapsed >= DURATION_SECONDS) {
-          completeScan();
-          return;
-        }
+          if (elapsed >= DURATION_SECONDS) {
+            completeScan();
+            return;
+          }
+          rafRef.current = requestAnimationFrame(tick);
+        };
         rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
-    });
-  }, [completeScan]);
+      })
+      .catch(() => {
+        // Model load failed (e.g. offline on first use — the MediaPipe model is
+        // fetched from a CDN). Never fall back to a fake signal; surface a real
+        // error so the user knows the scan did not run.
+        dispatch({ type: "scan_failed", error: "model_load_failed" });
+      });
+  }, [completeScan, state.facing]);
 
   async function handleSwitch() {
     stopCamera();
@@ -180,16 +183,10 @@ export function VitalScanScreen({
             {state.facing === "user"
               ? translate(language, "unone.scan.front")
               : translate(language, "unone.scan.rear")}
-            {" · "}
-            {ENGINE === "real"
-              ? translate(language, "unone.scan.engine.real")
-              : translate(language, "unone.scan.engine.mock")}
           </p>
         </div>
         <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1 text-[11px] font-bold text-[var(--brand-700)]">
-          {ENGINE === "mock"
-            ? translate(language, "unone.scan.mockNote")
-            : translate(language, "unone.scan.experimental")}
+          {translate(language, "unone.scan.experimental")}
         </span>
       </div>
 
@@ -252,6 +249,11 @@ export function VitalScanScreen({
       {state.qualityHint === "motion" ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {translate(language, "unone.scan.motion")}
+        </p>
+      ) : null}
+      {state.status === "failed" && !state.result && state.error ? (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {translate(language, "unone.scan.modelLoadError")}
         </p>
       ) : null}
 

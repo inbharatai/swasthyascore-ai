@@ -91,11 +91,11 @@ export const vitalScanResultSchema = z.object({
   repeat_scan_recommended: z.boolean(),
   created_at: z.string(),
   /**
-   * DEMO/DEV ONLY marker. When `engine === "mock"` the result was produced by
-   * the clearly-named MockRppgEngine and must NOT be treated as a real
-   * physiological measurement.
+   * Always "signal" — every vital scan is produced by the real on-device
+   * rPPG pipeline (MediaPipe ROI -> green channel -> bandpass -> autocorrelation).
+   * It is still experimental and NOT a clinically validated measurement.
    */
-  engine: z.enum(["mock", "signal"]).default("mock"),
+  engine: z.literal("signal").default("signal"),
 });
 
 export type VitalScanResult = z.infer<typeof vitalScanResultSchema>;

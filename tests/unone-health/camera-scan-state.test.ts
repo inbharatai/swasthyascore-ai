@@ -15,7 +15,7 @@ describe("camera scan state machine", () => {
     const switched = cameraScanReducer(initialCameraScanState, { type: "switch_camera" });
     expect(switched.facing).toBe("environment");
     expect(switched.status).toBe("switching");
-    expect(switched.cameraMode).toBe("rear_face");
+    expect(switched.cameraMode).toBe("rear_finger");
 
     const back = cameraScanReducer(switched, { type: "switch_camera" });
     expect(back.facing).toBe("user");
@@ -59,7 +59,7 @@ describe("camera scan state machine", () => {
       raw_video_uploaded: false as const,
       repeat_scan_recommended: false,
       created_at: "2026-07-01T00:00:00.000Z",
-      engine: "mock" as const,
+      engine: "signal" as const,
     };
     const done = cameraScanReducer(scanning, { type: "scan_complete", result: goodResult });
     expect(done.status).toBe("success");

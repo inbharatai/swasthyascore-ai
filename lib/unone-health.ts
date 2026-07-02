@@ -4,7 +4,6 @@
  */
 import { UnoOneHealthRuntime } from "@/modules/unone-health/core/runtime";
 import type { RppgEngine } from "@/modules/unone-health/health-skills/rppg-vital-scan/engine";
-import { MockRppgEngine } from "@/modules/unone-health/health-skills/rppg-vital-scan/engine";
 import { createRppgScanTool } from "@/modules/unone-health/health-skills/rppg-vital-scan";
 import { createLabExtractMarkersTool } from "@/modules/unone-health/health-skills/lab-lens";
 import { createSymptomCollectTool } from "@/modules/unone-health/health-skills/symptom-check";
@@ -65,10 +64,8 @@ export {
 } from "@/modules/unone-health/core/safety";
 
 export {
-  MockRppgEngine,
   type RppgEngine,
   finalizeVitalScan,
-  synthesizeMockFrame,
   aggregateFrameSamples,
   type RppgScanParams,
   type RppgScanSamples,
@@ -114,16 +111,19 @@ export {
 };
 
 /**
- * Build a runtime pre-loaded with the seven Swasthyak tools. The rPPG engine is
- * injected because it is environment-specific: tests/non-browser code use
- * `MockRppgEngine` (the safe default), the camera UI passes a `SignalRppgEngine`
- * bound to a live frame provider.
+ * Build a runtime pre-loaded with the Swasthyak health tools. The rPPG engine is
+ * injected because it is environment-specific: only browser code can supply a
+ * `SignalRppgEngine` bound to a live camera frame provider, so the `health.
+ * vitals.rppg_scan` tool is registered ONLY when an engine is passed. There is
+ * no default engine — a real scan always reads the camera.
  */
 export function createUnoOneHealthRuntime(
-  engine: RppgEngine = new MockRppgEngine(),
+  engine?: RppgEngine,
 ): UnoOneHealthRuntime {
   const runtime = UnoOneHealthRuntime.create();
-  runtime.register(createRppgScanTool(engine));
+  if (engine) {
+    runtime.register(createRppgScanTool(engine));
+  }
   runtime.register(createLabExtractMarkersTool());
   runtime.register(createSymptomCollectTool());
   runtime.register(createVoiceSummarizeTool());

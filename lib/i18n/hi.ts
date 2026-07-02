@@ -631,11 +631,15 @@ export const hi = {
   "unone.showcase.lab":
     "AI आपकी लैब रिपोर्ट पढ़ता है और उन मानों को चिह्नित करता है जिनके लिए डॉक्टरी समीक्षा चाहिए।",
   "unone.showcase.scan":
-    "डिवाइस पर कैमरा वाइटल स्कैन — हृदय और श्वसन दर के लिए।",
+    "कैमरा हार्ट-रेट स्कैन — डिवाइस पर हृदय और श्वसन दर जानें।",
   "unone.showcase.symptoms":
     "लक्षण अपने शब्दों में या आवाज़ से बताएं; गंभीरता और खतरे के संकेत पाएं।",
   "unone.showcase.advisory":
     "एक संयुक्त, सुरक्षित स्वास्थ्य सलाह, जीवनशैली और आहार योजना के साथ।",
+  "unone.heart.headline": "कैमरा हार्ट-रेट स्कैन",
+  "unone.heart.body":
+    "केवल अपने फ़ोन कैमरे से अपनी हृदय गति जानें (rPPG)। डिवाइस पर और निजी — कोई वीडियो अपलोड नहीं होता।",
+  "unone.heart.cta": "हार्ट रेट मापें",
   "unone.consentRequired": "जारी रखने के लिए सहमति दें।",
   "unone.consentLab": "मुझे अपनी लैब रिपोर्ट के AI विश्लेषण की सहमति है।",
   "unone.consentCamera": "मुझे इस डिवाइस पर कैमरा वाइटल स्कैन की सहमति है।",
@@ -658,7 +662,7 @@ export const hi = {
   "unone.scan.stop": "कैमरा बंद करें",
   "unone.scan.switch": "कैमरा बदलें",
   "unone.scan.front": "फ्रंट कैमरा: चेहरा स्कैन",
-  "unone.scan.rear": "रियर कैमरा स्कैन",
+  "unone.scan.rear": "रियर कैमरा: लेंस पर अपनी उंगली रखें",
   "unone.scan.timer": "स्कैन समय",
   "unone.scan.repeat": "स्कैन दोहराएं",
   "unone.scan.save": "परिणाम सेव करें",
@@ -678,10 +682,9 @@ export const hi = {
   "unone.scan.hr": "हृदय गति",
   "unone.scan.rr": "श्वसन दर",
   "unone.scan.confidence": "विश्वसनीयता",
-  "unone.scan.mockNote": "डेमो मोड (मॉक इंजन) — वास्तविक माप नहीं।",
   "unone.scan.experimental": "प्रायोगिक, नैदानिक रूप से प्रमाणित नहीं।",
-  "unone.scan.engine.real": "लाइव सिग्नल इंजन",
-  "unone.scan.engine.mock": "मॉक इंजन (डेमो)",
+  "unone.scan.modelLoadError":
+    "कैमरा मॉडल लोड होने में विफल रहा। यह स्कैन पहली बार इंटरनेट पर चलता है — कृपया ऑनलाइन दोबारा कोशिश करें।",
   "unone.symptoms.placeholder": "लक्षण अपने शब्दों में या वॉइस में बताएं…",
   "unone.symptoms.record": "वॉइस नोट जोड़ें (टेक्स्ट)",
   "unone.symptoms.submit": "लक्षण विश्लेषण",

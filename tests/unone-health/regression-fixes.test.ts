@@ -175,7 +175,7 @@ describe("camera scan reducer — decoupled quality hint", () => {
     const front = reduce({ type: "grant_consent" }, { type: "start_scan" });
     const switched = cameraScanReducer(front, { type: "switch_camera" });
     expect(switched.facing).toBe("environment");
-    expect(switched.cameraMode).toBe("rear_face");
+    expect(switched.cameraMode).toBe("rear_finger");
     // a single switch_camera flips exactly once (the old UI double-dispatched)
     const back = cameraScanReducer(switched, { type: "switch_camera" });
     expect(back.facing).toBe("user");

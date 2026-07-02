@@ -27,7 +27,7 @@ It helps families, field workers, NGOs, clinics, and community healthcare teams 
 - Report download, WhatsApp sharing, email sharing, native phone share sheet, and copy-to-clipboard without backend messaging APIs.
 - Installable PWA with manifest, icons, service worker, offline shell, and mobile safe-area spacing.
 - Future-ready placeholders for authentication, patient records, lab reports, referral notes, audit logs, and Supabase schema.
-- UnoOne Health — AI Health Intelligence module: lab report analysis, camera vital scan (rPPG), voice/text symptoms, a combined health advisory, and a per-patient health timeline. Cloud-first via OpenAI 5.5; rPPG runs on-device. Reachable from the **Health AI** tab on the home dashboard.
+- UnoOne Health — AI Health Intelligence module: lab report analysis, real camera heart-rate scan (rPPG), voice/text symptoms, a combined health advisory, and a per-patient health timeline. Cloud-first via OpenAI 5.5; rPPG runs on-device. Reachable from the **Health AI** tab and the landing-page **Camera Heart-Rate Scan** spotlight.
 
 ## UnoOne Health — AI Health Intelligence
 
@@ -35,7 +35,7 @@ It helps families, field workers, NGOs, clinics, and community healthcare teams 
 
 ### Tools (registered in `modules/unone-health/health-skills/`)
 
-- `health.vitals.rppg_scan` — camera vital scan. Heart rate (and respiratory rate in face mode) from green-channel rPPG. Confidence uses the exact 25/20/15/25/15 weighting with 0.80/0.60/0.40 thresholds; low confidence recommends a repeat scan and fail nulls the readings.
+- `health.vitals.rppg_scan` — real camera vital scan (rPPG), on-device only. Front-face mode gives heart rate + respiratory rate; rear-finger mode gives heart rate only. Confidence uses the exact 25/20/15/25/15 weighting with 0.80/0.60/0.40 thresholds; low confidence recommends a repeat scan and fail nulls the readings. No mock path.
 - `health.lab.extract_markers` — lab report analysis. Extracts patient/report metadata and markers (diabetes, lipids, kidney, liver, thyroid, CBC/anemia, inflammation, vitamins/minerals), honors the report's own reference ranges, and assigns `severity` (normal/watch/consult_doctor/urgent). PDFs and images via OpenAI vision + premium.
 - `health.symptoms.collect` — text/voice symptoms. Returns a `SymptomEvent` with severity and red flags; a local emergency matcher escalates chest pain, severe breathlessness, fainting, stroke signs, etc.
 - `health.voice.summarize` — voice note to a structured summary via OpenAI.
@@ -65,7 +65,10 @@ Backend persistence is an in-memory store typed and clearly marked as a placehol
 
 ### rPPG status (honest)
 
-- Partial real + mock fallback. The real `SignalRppgEngine` performs genuine frame capture, MediaPipe face ROI, green-channel signal, detrend, biquad bandpass, and autocorrelation HR (RR best-effort), and is flagged experimental / not clinically validated. The `MockRppgEngine` is the safe demo default (clearly labeled, results tagged). Front/back camera toggle is real. Default engine selectable via `NEXT_PUBLIC_UNONE_RPPG_ENGINE` (default `mock`).
+- **Real, on-device, no mock.** The only engine is `SignalRppgEngine`: genuine frame capture from the phone camera, MediaPipe FaceLandmarker ROI, green-channel signal, detrend, biquad bandpass, and autocorrelation → heart rate. There is no mock/fallback path — every scan reads the live camera. It is still **experimental and not clinically validated**; results are for awareness only and never a diagnosis.
+- **Front camera = face scan** → heart rate + respiratory rate. **Rear camera = fingertip scan** → heart rate only (place a fingertip over the lens). The rear/finger provider (`FingerFrameProvider`) averages the pulsing red channel.
+- The MediaPipe model is fetched from a CDN on first use, so a scan needs internet the first time; if the model fails to load the scan surfaces a real "needs internet on first use" error (no fabricated numbers). Low confidence nulls the readings and recommends a repeat scan.
+- The landing page has a dedicated **Camera Heart-Rate Scan** spotlight with a **Measure heart rate** button that opens Health AI directly on the vital scan.
 
 ## Privacy And Data
 
@@ -241,11 +244,12 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 23. Open email with subject/body prefilled.
 24. Use native share where supported.
 25. Confirm no diagnosis or medicine prescription language appears.
-26. Open the Health AI tab and confirm the AI Health Intelligence highlight banner and module card both navigate to it.
-27. Grant consent and run a mock camera vital scan; confirm a result card with a confidence label and the demo-mode note appear.
-28. Upload a sample lab report; confirm markers and critical flags render and that no marker says "you have …" or prescribes a medicine.
-29. Enter symptoms and generate a health advisory; confirm a risk level, lifestyle plan, doctor summary, family summary, and safety note render with no diagnosis wording.
-30. Turn offline and confirm a vital scan saves offline with a "will sync" banner, then syncs when back online.
+26. On the landing page, tap **Measure heart rate** and confirm it opens Health AI directly on the Camera Vital Scan (no extra tab navigation).
+27. Grant consent and run a real front-camera vital scan (20s); confirm a heart-rate result with a confidence label and the "experimental, not clinically validated" note — no "demo/mock" badge.
+28. Switch to the rear camera, follow the fingertip guidance, and scan; confirm a heart-rate result with no respiratory rate.
+29. Upload a sample lab report; confirm markers and critical flags render and that no marker says "you have …" or prescribes a medicine.
+30. Enter symptoms and generate a health advisory; confirm a risk level, lifestyle plan, doctor summary, family summary, and safety note render with no diagnosis wording.
+31. Turn offline before a first scan and confirm the scan shows a "needs internet on first use" error rather than a fabricated heart rate.
 
 ## Known Limitations
 
@@ -256,7 +260,7 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 - Browser voice input depends on device and browser support.
 - MediaPipe pose detection depends on lighting, full-body visibility, browser support, and model loading.
 - Camera Health Assist is guidance only and does not replace manual measurements.
-- UnoOne Health rPPG is partial real + mock fallback; the signal engine is experimental and not clinically validated. It is for awareness only and never diagnoses.
+- UnoOne Health rPPG is real and on-device but experimental and not clinically validated. It is for awareness only and never diagnoses; the rear-finger mode gives heart rate only.
 - UnoOne Health backend persistence is an in-memory placeholder until the real Swasthyak backend is connected.
 
 ## Safety Boundaries

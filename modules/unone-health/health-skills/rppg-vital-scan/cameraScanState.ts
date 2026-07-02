@@ -120,7 +120,9 @@ export function cameraScanReducer(
         ...state,
         status: "switching",
         facing: nextFacing,
-        cameraMode: cameraFacingToMode(nextFacing, false),
+        // Rear camera is the fingertip scan (HR only); front camera is the
+        // face scan (HR + RR). fingerMode=true maps rear -> rear_finger.
+        cameraMode: cameraFacingToMode(nextFacing, true),
         qualityHint: null,
       };
     }

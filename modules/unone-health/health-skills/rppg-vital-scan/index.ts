@@ -16,8 +16,9 @@ export const rppgScanInputSchema = z.object({
 
 /**
  * Factory: build the `health.vitals.rppg_scan` tool bound to a concrete engine.
- * The engine (mock or signal+provider) is supplied at runtime by the UI, so
- * the tool itself contains no browser/DOM code and is safe to register anywhere.
+ * The engine (signal + a real camera FrameProvider) is supplied at runtime by
+ * the UI, so the tool itself contains no browser/DOM code and is safe to
+ * register anywhere.
  */
 export function createRppgScanTool(engine: RppgEngine): ToolDescriptor {
   return {

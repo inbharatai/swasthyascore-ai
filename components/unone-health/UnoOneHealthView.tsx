@@ -22,11 +22,17 @@ type SubSection = "lab" | "scan" | "symptoms" | "advisory" | "timeline";
 interface UnoOneHealthViewProps {
   language: Language;
   online: boolean;
+  /** Deep-link target sub-section (e.g. the landing "Measure heart rate" CTA). */
+  initialSection?: SubSection;
 }
 
-export function UnoOneHealthView({ language, online }: UnoOneHealthViewProps) {
+export function UnoOneHealthView({
+  language,
+  online,
+  initialSection = "lab",
+}: UnoOneHealthViewProps) {
   const patientId = usePatientId();
-  const [section, setSection] = useState<SubSection>("lab");
+  const [section, setSection] = useState<SubSection>(initialSection);
   const [labReport, setLabReport] = useState<LabReportEvent | null>(null);
   const [vitals, setVitals] = useState<VitalScanResult | null>(null);
   const [symptoms, setSymptoms] = useState<SymptomEvent | null>(null);
