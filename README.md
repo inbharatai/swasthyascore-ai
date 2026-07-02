@@ -53,7 +53,7 @@ It helps families, field workers, NGOs, clinics, and community healthcare teams 
 - `POST /api/v1/health-events` — persist an event.
 - `GET /api/v1/patient/[id]/timeline` — list a patient's events.
 
-Backend persistence is an in-memory store typed and clearly marked as a placeholder until the real Swasthyak backend lands. `SwasthyakAdapter` wraps these routes for client code.
+Backend persistence defaults to an in-memory store (volatile, resets on redeploy) and transparently upgrades to durable **Vercel Postgres** the moment a Postgres store is connected to the project (see [Hosting](#hosting-vercel-is-sufficient)). `SwasthyakAdapter` wraps these routes for client code.
 
 ### Safety & privacy guarantees
 
@@ -74,7 +74,7 @@ Backend persistence is an in-memory store typed and clearly marked as a placehol
 
 ## Privacy And Data
 
-- No cloud database is required in the current release.
+- No cloud database is required for the core experience. Durable per-patient history is available by connecting a Vercel Postgres store (one dashboard click — see [Hosting](#hosting-vercel-is-sufficient)); until then, "synced" events live in process memory.
 - Authentication is not active yet.
 - Form drafts are stored in browser `localStorage` for convenience.
 - Uploaded images are not stored by default by the app.
@@ -194,8 +194,10 @@ Nothing is auto-sent. The user chooses when and where to send the report.
 
 - The whole app — UI, API routes, and the on-device rPPG scan — runs on **Vercel** (Next.js, Node 24.x). It is already linked and deployed: `swasthyascore-ai.vercel.app`. You do **not** need Railway, Render, or any other host for the user-facing features to work.
 - **AI functions** run as Vercel serverless functions calling OpenAI with the Responses API; every API route sets `maxDuration = 60` so slow structured-output calls (lab report analysis, combined advisory) don't hit the 10s default timeout. The `OPENAI_API_KEY` + `OPENAI_MODEL_*` vars are set in the Vercel **Production** environment. (If you want AI to also work on Preview/branch deployments, add the same vars to the Preview environment in Vercel → Environment Variables.)
-- **What you'd host elsewhere (optional, only for durable history):** health-event persistence is currently an **in-memory placeholder** (`serverEventStore`) — "synced" events live only in that serverless instance's memory and do not survive a redeploy and are not shared across users. For a durable, per-patient timeline that survives, attach a database. Lightest options, in order of effort: **Vercel Postgres** (Storage tab, same platform), **Supabase** (Postgres + auth), or a **Railway/Render** Postgres. The app stays on Vercel; only the database is external. The `lib/future/*` placeholders + `supabase.schema.sql` sketch this path.
-- So: **Vercel alone makes every function work accurately for anyone with the link.** A database is a later enhancement for durable history, not a requirement for the core experience.
+- **Durable history is wired up and opt-in via Vercel Postgres (one click).** The `/api/v1` health routes persist events through `serverEventStore` / `serverLabFileStore` (`modules/unone-health/adapters/swasthyak-adapter/serverStore.ts`). When a Postgres connection URL is present in the environment (`POSTGRES_URL` — injected automatically when you connect a Vercel Postgres store), every `save` / `list` / `get` is routed to the durable Postgres implementation (`lib/server/postgresStore.ts`, JSONB `health_events` + `lab_files` tables, schema auto-created on first request — no migration step). When no URL is present, the same calls fall back to the in-memory Map, so the app never breaks on a fresh deploy. The `@vercel/postgres` module is loaded lazily via dynamic `import()`, so tests and `next build` never touch a database.
+  - **To activate durable history (one dashboard click):** Vercel → your `swasthyascore-ai` project → **Storage** tab → **Create** → **Postgres** → name it → **Connect to Project** → select `swasthyascore-ai` → confirm. Vercel injects `POSTGRES_URL` (and `POSTGRES_PRISMA_URL` / `POSTGRES_NON_POOLING_URL`) into your environments and triggers a redeploy. On the next request, `ensureSchema()` creates the tables. No code change, no migration command, no env var to paste.
+- **What you'd host elsewhere (optional):** nothing for the user-facing features. The only external dependency AI needs is the `OPENAI_API_KEY` (already set in the Vercel Production environment). If you later want auth + row-level security on patient records, Supabase is the natural upgrade (the `lib/future/*` placeholders + `supabase.schema.sql` sketch that path) — but Vercel Postgres alone already gives you a durable, per-patient timeline that survives redeploys and is shared across instances.
+- So: **Vercel alone makes every function work accurately for anyone with the link.** A database is a one-click enhancement for durable history, not a requirement for the core experience.
 
 ## Future Auth And Database
 
@@ -275,7 +277,7 @@ Before storing patient records in the cloud, add explicit consent, retention rul
 - MediaPipe pose detection depends on lighting, full-body visibility, browser support, and model loading.
 - Camera Health Assist is guidance only and does not replace manual measurements.
 - UnoOne Health rPPG is real and on-device but experimental and not clinically validated. It is for awareness only and never diagnoses; the rear-finger mode gives heart rate only. The torch toggle is unavailable on iOS Safari (it does not expose `torch` in track capabilities) — the button is hidden, not broken. The 60fps ideal is a request; the device may deliver a lower rate and the two-tier constraint fallback handles rejection.
-- UnoOne Health backend persistence is an in-memory placeholder until the real Swasthyak backend is connected.
+- UnoOne Health backend persistence defaults to in-memory and upgrades to durable Vercel Postgres automatically when a Postgres store is connected (one click — no code or migration change).
 
 ## Safety Boundaries
 

@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       created_at: now,
       synced_at: now,
     };
-    serverEventStore.save(event);
+    await serverEventStore.save(event);
 
     return NextResponse.json(safe, {
       headers: { "Cache-Control": "no-store" },

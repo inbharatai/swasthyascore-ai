@@ -13,7 +13,7 @@ type RouteContext = {
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const timeline = serverEventStore.list(id);
+    const timeline = await serverEventStore.list(id);
     return NextResponse.json(timeline, {
       headers: { "Cache-Control": "no-store" },
     });

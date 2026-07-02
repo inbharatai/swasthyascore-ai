@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       created_at: event.created_at,
       synced_at: now,
     };
-    serverEventStore.save(stored);
+    await serverEventStore.save(stored);
 
     return NextResponse.json(
       { event_id: stored.event_id, event },

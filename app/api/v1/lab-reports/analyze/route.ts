@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     let filename = body.filename ?? "lab-report";
 
     if (body.report_id) {
-      const stored = serverLabFileStore.get(body.report_id);
+      const stored = await serverLabFileStore.get(body.report_id);
       if (!stored || stored.patient_id !== body.patient_id) {
         return NextResponse.json({ error: "Report not found." }, { status: 404 });
       }
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       created_at: event.created_at,
       synced_at: event.created_at,
     };
-    serverEventStore.save(healthEvent);
+    await serverEventStore.save(healthEvent);
 
     return NextResponse.json(event, {
       headers: { "Cache-Control": "no-store" },

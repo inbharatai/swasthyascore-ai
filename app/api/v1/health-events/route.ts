@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     const stored = { ...event, synced_at: isoNow() };
-    serverEventStore.save(stored);
+    await serverEventStore.save(stored);
 
     return NextResponse.json(
       { event_id: stored.event_id },

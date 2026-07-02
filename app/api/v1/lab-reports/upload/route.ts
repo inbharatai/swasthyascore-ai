@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const base64DataUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
     const reportId = uuid();
 
-    serverLabFileStore.save({
+    await serverLabFileStore.save({
       report_id: reportId,
       patient_id: patientId,
       mime_type: file.type,
