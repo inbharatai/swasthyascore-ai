@@ -124,7 +124,11 @@ function sampleRoiFromFrame(
     landmarkDistance(smoothed, LEFT_CHEEK, RIGHT_CHEEK) ||
     0;
   if (interocular <= 0) {
-    return { ...emptyRoi(), faceDetected: true, validRois: 0 };
+    // Landmarks present but no usable face scale (no eyes AND no cheeks). Treat
+    // as no-face so the provider drops this frame (returns null) instead of
+    // pushing a zero-mean sample into the trace — a zero sample is a spike
+    // artefact that the bandpass/autocorrelation would lock onto.
+    return { ...emptyRoi(), faceDetected: false, validRois: 0 };
   }
 
   const nose = smoothed[NOSE_TIP];
@@ -206,7 +210,11 @@ function sampleRoiFromFrame(
     }
   }
 
-  if (count === 0) return { ...emptyRoi(), faceDetected: true, validRois: 0 };
+  if (count === 0) {
+    // ROIs were defined but yielded zero pixels (entirely off-screen / tainted).
+    // Drop the frame (null) rather than emit zero channel means — see above.
+    return { ...emptyRoi(), faceDetected: false, validRois: 0 };
+  }
 
   const redMean = redSum / count;
   const greenMean = greenSum / count;
