@@ -76,6 +76,12 @@ export function VitalScanScreen({
   const framesRef = useRef<RppgFrameSample[]>([]);
   const captureRef = useRef<RppgFrameSample[]>([]);
   const startRef = useRef<number>(0);
+  // Last successful (non-null) BPM, kept across scans and fed back to the HR
+  // estimator as `priorBpm`. The estimator only consults it when the current
+  // capture's SNR is weak, so a confident reading is never overridden — it
+  // merely suppresses the classic halving/doubling glitch on a borderline
+  // capture, which is a leading cause of run-to-run fluctuation.
+  const lastGoodBpmRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const providerRef = useRef<FaceRoiFrameProvider | FingerFrameProvider | null>(null);
   const waveformRef = useRef<VitalScanWaveformHandle | null>(null);
@@ -165,7 +171,14 @@ export function VitalScanScreen({
       { cameraMode, durationSeconds: DURATION_SECONDS },
       "signal",
       isoNow(),
+      lastGoodBpmRef.current,
     );
+    // Remember a trustworthy reading so the next scan can use it as the
+    // harmonic-reconciliation prior (cross-scan stability). Only "good"/"moderate"
+    // results carry a real HR; fail/low/null results never seed a prior.
+    if (result.heart_rate_bpm != null && result.confidence_label !== "fail") {
+      lastGoodBpmRef.current = result.heart_rate_bpm;
+    }
     dispatch({ type: "scan_complete", result });
     onResult(result);
 
@@ -541,10 +554,19 @@ export function VitalScanScreen({
           </svg>
         ) : null}
 
-        {/* Finger target ring (rear camera) */}
-        {state.facing === "environment" ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-24 w-24 rounded-full border-2 border-dashed border-white/60" />
+        {/* Finger placement guide (rear camera). The rear camera lens sits in a
+            CORNER of the phone, not the centre of the screen — a centre target
+            ring would point users at the wrong place. Instead give explicit,
+            plain-language instructions before the scan starts. */}
+        {state.facing === "environment" && !active ? (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/40 px-6 text-center backdrop-blur-[1px]">
+            <Hand className="h-9 w-9 text-white" />
+            <p className="text-sm font-bold leading-6 text-white">
+              {translate(language, "unone.scan.finger.placement")}
+            </p>
+            <p className="text-[11px] font-medium leading-4 text-white/80">
+              {translate(language, "unone.scan.finger.torch")}
+            </p>
           </div>
         ) : null}
 
@@ -602,21 +624,33 @@ export function VitalScanScreen({
         ) : null}
       </div>
 
-      {/* Live quality meters during countdown + scanning */}
+      {/* Live quality meters during countdown + scanning. Labels are mode-aware:
+          finger mode repurposes the three sub-scores (contact quality, finger
+          stillness, signal steadiness) so the meters read honestly for a
+          fingertip-PPG capture instead of borrowing face-mode vocabulary. */}
       {active ? (
         <div className="grid grid-cols-3 gap-3">
           <QualityMeter
-            label={translate(language, "unone.scan.lighting")}
+            label={translate(
+              language,
+              state.facing === "environment" ? "unone.scan.contact" : "unone.scan.lighting",
+            )}
             pct={lightingPct}
             color={lightingColor}
           />
           <QualityMeter
-            label={translate(language, "unone.scan.motionMeter")}
+            label={translate(
+              language,
+              state.facing === "environment" ? "unone.scan.stillness" : "unone.scan.motionMeter",
+            )}
             pct={motionPct}
             color={motionColor}
           />
           <QualityMeter
-            label={translate(language, "unone.scan.stability")}
+            label={translate(
+              language,
+              state.facing === "environment" ? "unone.scan.steady" : "unone.scan.stability",
+            )}
             pct={stabilityPct}
             color={stabilityColor}
           />

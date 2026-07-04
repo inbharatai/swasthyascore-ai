@@ -16,6 +16,11 @@
 import type { RppgEngine, RppgScanParams, RppgScanSamples, RppgFrameSample } from "./engine";
 import { aggregateFrameSamples } from "./engine";
 import { computeFingerSignalQuality, FINGER_WINDOW } from "./fingerSignal";
+import {
+  smoothLandmarks,
+  landmarkDistance,
+  type Point,
+} from "./landmarkSmoothing";
 
 // Self-hosted (in /public) so the first rPPG scan works on any network without
 // depending on googleapis / jsdelivr CDNs (which are blocked on some networks
@@ -60,10 +65,23 @@ async function createFaceLandmarker(): Promise<FaceLandmarker> {
 }
 
 /** Mediapipe FaceLandmarker landmark indices for the rPPG ROI. */
-const LEFT_CHEEK = 234;
+const LEFT_CHEEK = 234; // subject's left cheek (image right when mirrored)
 const RIGHT_CHEEK = 454;
-const FOREHEAD = 10;
 const NOSE_TIP = 1;
+const NASION = 6; // between the eyebrows — reliable forehead anchor
+const LEFT_EYE_OUTER = 33; // canonical inter-ocular scale pair
+const RIGHT_EYE_OUTER = 263;
+const FOREHEAD_TOP = 10; // hairline — used to cap the forehead ROI
+
+/** EMA smoothing factor for landmark coordinates. α = 0.5 → ~33 ms time
+ * constant at 30 fps: tracks real head motion within one frame while averaging
+ * sub-pixel detector jitter that otherwise destabilises the ROI. See
+ * `landmarkSmoothing.ts` for the rationale. */
+const LM_SMOOTH_ALPHA = 0.5;
+
+/** Indices we actually read for the ROI. Smoothing only these keeps the work
+ * cheap (≤7 points/frame) and the state tiny. */
+const ROI_INDICES = [LEFT_CHEEK, RIGHT_CHEEK, NOSE_TIP, NASION, LEFT_EYE_OUTER, RIGHT_EYE_OUTER, FOREHEAD_TOP];
 
 interface RoiResult {
   greenMean: number;
@@ -79,8 +97,8 @@ interface RoiResult {
 
 function sampleRoiFromFrame(
   video: HTMLVideoElement,
-  landmarks: Landmark[] | undefined,
-  prevCenter: { x: number; y: number } | null,
+  smoothed: Partial<Record<number, Point>> | null,
+  prevNose: Point | null,
 ): RoiResult {
   const w = video.videoWidth;
   const h = video.videoHeight;
@@ -92,42 +110,68 @@ function sampleRoiFromFrame(
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return emptyRoi();
 
-  if (!landmarks || landmarks.length === 0) {
+  if (!smoothed) {
     return { ...emptyRoi(), faceDetected: false };
   }
 
-  // Cheek ROIs: small boxes centered on each cheek, offset away from eyes/mouth.
-  const half = Math.min(w, h) * 0.06;
-  const rois: { x: number; y: number; w: number; h: number }[] = [];
-  const cheekCenter = (idx: number, awayX: number, awayY: number) => {
-    const c = landmarks[idx];
-    const nose = landmarks[NOSE_TIP];
-    if (!c || !nose) return null;
-    const dx = c.x - nose.x;
-    const dy = c.y - nose.y;
-    return {
-      x: (nose.x + dx * awayX) * w - half,
-      y: (nose.y + dy * awayY) * h - half,
-      w: half * 2,
-      h: half * 2,
-    };
-  };
-  const leftCheek = cheekCenter(LEFT_CHEEK, 1.4, 0.6);
-  const rightCheek = cheekCenter(RIGHT_CHEEK, 1.4, 0.6);
-  if (leftCheek) rois.push(leftCheek);
-  if (rightCheek) rois.push(rightCheek);
+  // Face scale = inter-ocular distance (outer-eye to outer-eye), in NORMALIZED
+  // coords. Sizing the ROI boxes to this adapts to how close the user is: a
+  // fixed pixel box is too small for a distant face (too few pulse pixels) and
+  // too large for a close face (crosses into eyes/hair/eyebrows). Fall back to
+  // cheek-to-cheek distance if the eye landmarks are missing.
+  const interocular =
+    landmarkDistance(smoothed, LEFT_EYE_OUTER, RIGHT_EYE_OUTER) ||
+    landmarkDistance(smoothed, LEFT_CHEEK, RIGHT_CHEEK) ||
+    0;
+  if (interocular <= 0) {
+    return { ...emptyRoi(), faceDetected: true, validRois: 0 };
+  }
 
-  // Forehead ROI: above the nose, between the eyes.
-  const forehead = landmarks[FOREHEAD];
-  const nose = landmarks[NOSE_TIP];
-  if (forehead && nose) {
+  const nose = smoothed[NOSE_TIP];
+  const nasion = smoothed[NASION];
+  const foreheadTop = smoothed[FOREHEAD_TOP];
+
+  const rois: { x: number; y: number; w: number; h: number }[] = [];
+
+  // Forehead ROI: centered above the nasion (between the brows), wide and short,
+  // capped below the hairline by FOREHEAD_TOP so it stays on skin. Width ~1.0 ×
+  // inter-ocular, height ~0.45 × inter-ocular.
+  if (nasion) {
+    const fw = interocular * 1.0;
+    const fh = interocular * 0.45;
+    const cx = nasion.x;
+    // Place the box so its BOTTOM sits just above the brows (nasion y − a small
+    // gap), top bounded by FOREHEAD_TOP so hair never enters.
+    let topY = nasion.y - fh * 1.1;
+    if (foreheadTop) topY = Math.max(topY, foreheadTop.y + fh * 0.1);
     rois.push({
-      x: forehead.x * w - half,
-      y: forehead.y * h - half * 0.7,
-      w: half * 2,
-      h: half * 1.4,
+      x: (cx - fw / 2) * w,
+      y: topY * h,
+      w: fw * w,
+      h: fh * h,
     });
   }
+
+  // Cheek ROIs: each cheek center is pushed OUTWARD from the nose by a fraction
+  // of the nose→cheek vector (sits on the fleshy cheek, clear of the eye/mouth).
+  // Box side ~0.55 × inter-ocular — large enough for solid spatial averaging.
+  const cheekBox = (idx: number, pushOut: number, downShift: number) => {
+    const cheek = smoothed[idx];
+    if (!cheek || !nose) return null;
+    const dx = cheek.x - nose.x;
+    const dy = cheek.y - nose.y;
+    const side = interocular * 0.55;
+    return {
+      x: (nose.x + dx * pushOut - side / 2) * w,
+      y: (nose.y + dy * downShift + side * 0.1 - side / 2) * h,
+      w: side * w,
+      h: side * h,
+    };
+  };
+  const leftCheek = cheekBox(LEFT_CHEEK, 1.35, 0.55);
+  const rightCheek = cheekBox(RIGHT_CHEEK, 1.35, 0.55);
+  if (leftCheek) rois.push(leftCheek);
+  if (rightCheek) rois.push(rightCheek);
 
   let redSum = 0;
   let greenSum = 0;
@@ -182,32 +226,24 @@ function sampleRoiFromFrame(
     Math.min(1, 0.75 * brightnessTerm + 0.25 * pulsatilityTerm),
   );
 
-  // Motion: raw nose displacement in normalized coords (drives the UI meter and
-  // the per-frame HR mask). Kept SEPARATE from faceStability so motion is not
-  // double-counted in the confidence formula.
+  // Motion: nose displacement in NORMALIZED coords, scaled by inter-ocular so a
+  // distant face is not penalised for the same pixel motion as a close one.
+  // Computed on the SMOOTHED nose (less noisy than raw). Kept separate from
+  // faceStability so motion is not double-counted in the confidence formula.
   const center = nose ? { x: nose.x, y: nose.y } : null;
   let motionScore = 0.9;
-  if (prevCenter && center) {
-    const dist = Math.hypot(center.x - prevCenter.x, center.y - prevCenter.y);
-    motionScore = Math.max(0, 1 - dist * 20);
+  if (prevNose && center) {
+    const dist = Math.hypot(center.x - prevNose.x, center.y - prevNose.y);
+    motionScore = Math.max(0, 1 - (dist / interocular) * 8);
   }
 
-  // faceStability is INDEPENDENT of motionScore: it combines ROI visibility
-  // (how many landmark boxes returned pixels) with a face-size-normalized
-  // stillness (nose displacement divided by inter-cheek distance, so a small
-  // face far away is not penalised for the same pixel motion as a close face).
+  // faceStability combines ROI visibility (how many boxes returned pixels) with
+  // the same face-scale-normalised stillness used above.
   const visibility = validRois / 3;
   let stillness = motionScore;
-  if (leftCheek && rightCheek) {
-    const lc = landmarks[LEFT_CHEEK];
-    const rc = landmarks[RIGHT_CHEEK];
-    if (lc && rc) {
-      const interocular = Math.hypot(lc.x - rc.x, lc.y - rc.y) || 1;
-      const rawDisp = prevCenter && center
-        ? Math.hypot(center.x - prevCenter.x, center.y - prevCenter.y)
-        : 0;
-      stillness = Math.max(0, 1 - (rawDisp / interocular) * 8);
-    }
+  if (prevNose && center) {
+    const rawDisp = Math.hypot(center.x - prevNose.x, center.y - prevNose.y);
+    stillness = Math.max(0, 1 - (rawDisp / interocular) * 8);
   }
   const faceStability = Math.max(0, Math.min(1, 0.45 * visibility + 0.55 * stillness));
 
@@ -309,7 +345,10 @@ function emptyRoi(): RoiResult {
  * autocorrelation.
  */
 export class FaceRoiFrameProvider {
-  private prevCenter: { x: number; y: number } | null = null;
+  /** Smoothed landmark coordinates for the indices in `ROI_INDICES`. EMA over
+   * frames stabilises the ROI on a still face (see landmarkSmoothing.ts). */
+  private smoothed: Partial<Record<number, Point>> = {};
+  private prevNose: Point | null = null;
   private landmarker: FaceLandmarker | null = null;
   private lastMediaTime = -1;
 
@@ -329,11 +368,30 @@ export class FaceRoiFrameProvider {
     // detection latency jitter does not flow into the sample-rate derivation.
     const timestampMs = performance.now();
     const result = this.landmarker.detectForVideo(this.video, timestampMs);
-    const landmarks = result.faceLandmarks?.[0];
-    const roi = sampleRoiFromFrame(this.video, landmarks, this.prevCenter);
-    if (landmarks?.[NOSE_TIP]) {
-      this.prevCenter = { x: landmarks[NOSE_TIP].x, y: landmarks[NOSE_TIP].y };
+    const raw = result.faceLandmarks?.[0];
+
+    // Build a sparse map of the raw landmarks we actually use, then EMA-smooth
+    // them against the previous frame. On a still face this kills the
+    // sub-pixel detector jitter that otherwise wobbles the ROI and injects
+    // broadband noise into the R/G/B means (a leading cause of run-to-run
+    // HR fluctuation). The ROI placement + motion maths downstream consume
+    // the SMOOTHED coordinates exclusively.
+    const rawMap: Partial<Record<number, Point>> = {};
+    if (raw) {
+      for (const idx of ROI_INDICES) {
+        const lm = raw[idx];
+        if (lm) rawMap[idx] = { x: lm.x, y: lm.y };
+      }
     }
+    this.smoothed = smoothLandmarks(
+      Object.keys(this.smoothed).length > 0 ? this.smoothed : null,
+      rawMap,
+      LM_SMOOTH_ALPHA,
+    );
+
+    const nose = this.smoothed[NOSE_TIP] ?? null;
+    const roi = sampleRoiFromFrame(this.video, this.smoothed, this.prevNose);
+    if (nose) this.prevNose = nose;
     if (!roi.faceDetected) return null;
     return {
       greenMean: roi.greenMean,
@@ -351,7 +409,8 @@ export class FaceRoiFrameProvider {
   release(): void {
     this.landmarker?.close?.();
     this.landmarker = null;
-    this.prevCenter = null;
+    this.smoothed = {};
+    this.prevNose = null;
     this.lastMediaTime = -1;
   }
 }

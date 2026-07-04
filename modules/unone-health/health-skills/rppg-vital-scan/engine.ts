@@ -145,12 +145,19 @@ export function aggregateFrameSamples(
  * zero-phase bandpass → Welch + autocorr reconciliation + snrSQI/rdspSQI
  * gates). The estimate's trust (SNR + per-window agreement) caps the reported
  * confidence so a well-lit-but-noisy capture cannot be reported as "good".
+ *
+ * `priorBpm` (optional, from a previous successful scan) is forwarded to the
+ * HR estimator's harmonic-reconciliation step. It is ONLY consulted when the
+ * current SNR is weak (< 0.3), so a confident new reading is never overridden by
+ * stale context — it merely suppresses the classic halving/doubling glitch on
+ * a borderline capture, which is a leading cause of run-to-run fluctuation.
  */
 export function finalizeVitalScan(
   samples: RppgScanSamples,
   params: RppgScanParams,
   engineId: "signal",
   nowIso: string,
+  priorBpm?: number | null,
 ): VitalScanResult {
   const confidenceBlock = buildConfidenceBlock({
     faceRoiStability: samples.faceRoiStability,
@@ -171,6 +178,7 @@ export function finalizeVitalScan(
     lighting: samples.lighting,
     stability: samples.stability,
     mode,
+    priorBpm,
   });
 
   const heartRateBpm = hrEstimate.bpm;
